@@ -14,3 +14,10 @@ flume = "0.8.4"
 eframe = { version = "0.14.0", features = ["persistence"] }
 egui = "0.14.2"
 serde = { version = "1.0", features = ["derive"] }
+
+[dev-dependencies]
+criterion = "0.3"
+
+[[bench]]
+name = "line_drawing"
+harness = false
