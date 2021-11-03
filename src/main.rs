@@ -63,8 +63,18 @@ impl Image {
         }
     }
 
-    fn pixel(&mut self, x: usize, y: usize) -> &mut RGB8 {
-        &mut self.pixels[y * self.width + x]
+    fn pixel(&mut self, x: i32, y: i32) -> &mut RGB8 {
+        &mut self.pixels[y as usize * self.width + x as usize]
+    }
+
+    fn line(&mut self, x0: i32, y0: i32, x1: i32, y1: i32, color: RGB8) {
+        let increment = 0.1;
+        for i in 0..((1.0 / increment) as i32) {
+            let i = f64::from(i) * increment;
+            let x = x0 as f64 + (x1 - x0) as f64 * i;
+            let y = y0 as f64 + (y1 - y0) as f64 * i;
+            *self.pixel(x as i32, y as i32) = color;
+        }
     }
 }
 
@@ -102,8 +112,12 @@ fn run_render_loop(
 
                 let mut image = Image::new(config.image_width, config.image_height);
 
-                *image.pixel(config.image_width / 2, config.image_height / 2) =
-                    RGB8::new(255, 0, 0);
+                *image.pixel(
+                    config.image_width as i32 / 2,
+                    config.image_height as i32 / 2,
+                ) = RGB8::new(255, 0, 0);
+
+                image.line(0, 0, 50, 50, RGB8::new(0, 255, 0));
 
                 render_result_tx
                     .send(RenderResult::FullImage {
