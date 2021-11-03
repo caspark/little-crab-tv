@@ -47,6 +47,27 @@ enum RenderResult {
     },
 }
 
+#[derive(Clone, Debug)]
+struct Image {
+    width: usize,
+    height: usize,
+    pixels: Vec<RGB8>,
+}
+
+impl Image {
+    fn new(width: usize, height: usize) -> Self {
+        Self {
+            width,
+            height,
+            pixels: vec![RGB8::default(); width * height],
+        }
+    }
+
+    fn pixel(&mut self, x: usize, y: usize) -> &mut RGB8 {
+        &mut self.pixels[y * self.width + x]
+    }
+}
+
 fn main() {
     let (command_tx, command_rx) = flume::unbounded::<RenderCommand>();
     let (result_tx, result_rx) = flume::unbounded::<RenderResult>();
@@ -79,12 +100,15 @@ fn run_render_loop(
                     .ok()
                     .expect("sending Reset should succeed");
 
-                let mut pixels = vec![RGB8::new(0, 0, 0); config.image_pixel_count()];
+                let mut image = Image::new(config.image_width, config.image_height);
 
-                pixels[config.image_width * config.image_height / 2] = RGB8::new(255, 0, 0);
+                *image.pixel(config.image_width / 2, config.image_height / 2) =
+                    RGB8::new(255, 0, 0);
 
                 render_result_tx
-                    .send(RenderResult::FullImage { pixels })
+                    .send(RenderResult::FullImage {
+                        pixels: image.pixels,
+                    })
                     .ok()
                     .unwrap();
             }
