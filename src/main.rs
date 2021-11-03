@@ -67,11 +67,51 @@ impl Image {
         &mut self.pixels[y as usize * self.width + x as usize]
     }
 
-    fn line(&mut self, x0: i32, y0: i32, x1: i32, y1: i32, color: RGB8) {
+    // incorrect because it depends on choosing the correct "increment", which will vary based on
+    // how many pixels need to be drawn
+    #[allow(dead_code)]
+    fn line_naive1(&mut self, x0: i32, y0: i32, x1: i32, y1: i32, color: RGB8) {
+        let increment = 0.1;
+        for i in 0..((1.0 / increment) as i32) {
+            let i = f64::from(i) * increment;
+            let x = x0 as f64 + (x1 - x0) as f64 * i;
+            let y = y0 as f64 + (y1 - y0) as f64 * i;
+            *self.pixel(x as i32, y as i32) = color;
+        }
+    }
+
+    // incorrect because it doesn't handle the case where the line is near vertical or x1 < x0
+    #[allow(dead_code)]
+    fn line_naive2(&mut self, x0: i32, y0: i32, x1: i32, y1: i32, color: RGB8) {
         for x in x0..x1 {
             let t = (x - x0) as f64 / (x1 - x0) as f64;
             let y = y0 as f64 * (1.0 - t) as f64 + y1 as f64 * t as f64;
             *self.pixel(x as i32, y as i32) = color;
+        }
+    }
+
+    // Bresenham's algorithm 1 - correct but slow due to needing floating point maths
+    fn line(&mut self, mut x0: i32, mut y0: i32, mut x1: i32, mut y1: i32, color: RGB8) {
+        let steep = if (x0 - x1).abs() < (y0 - y1).abs() {
+            std::mem::swap(&mut x0, &mut y0);
+            std::mem::swap(&mut x1, &mut y1);
+            true
+        } else {
+            false
+        };
+        if x0 > x1 {
+            std::mem::swap(&mut x0, &mut x1);
+            std::mem::swap(&mut y0, &mut y1);
+        }
+
+        for x in x0..x1 {
+            let t = (x - x0) as f64 / (x1 - x0) as f64;
+            let y = y0 as f64 * (1.0 - t) as f64 + y1 as f64 * t as f64;
+            if steep {
+                *self.pixel(y as i32, x as i32) = color;
+            } else {
+                *self.pixel(x as i32, y as i32) = color;
+            }
         }
     }
 }
