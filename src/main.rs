@@ -23,7 +23,7 @@ impl RenderConfig {
 impl Default for RenderConfig {
     fn default() -> Self {
         let aspect_ratio = 16.0 / 9.0;
-        let image_width = 400;
+        let image_width = 100;
         Self {
             image_width,
             image_height: (image_width as f64 / aspect_ratio) as usize,
@@ -68,11 +68,9 @@ impl Image {
     }
 
     fn line(&mut self, x0: i32, y0: i32, x1: i32, y1: i32, color: RGB8) {
-        let increment = 0.1;
-        for i in 0..((1.0 / increment) as i32) {
-            let i = f64::from(i) * increment;
-            let x = x0 as f64 + (x1 - x0) as f64 * i;
-            let y = y0 as f64 + (y1 - y0) as f64 * i;
+        for x in x0..x1 {
+            let t = (x - x0) as f64 / (x1 - x0) as f64;
+            let y = y0 as f64 * (1.0 - t) as f64 + y1 as f64 * t as f64;
             *self.pixel(x as i32, y as i32) = color;
         }
     }
@@ -117,6 +115,14 @@ fn run_render_loop(
                     config.image_height as i32 / 2,
                 ) = RGB8::new(255, 0, 0);
 
+                let white = RGB8::new(255, 255, 255);
+                let red = RGB8::new(255, 0, 0);
+                let green = RGB8::new(0, 255, 0);
+                let blue = RGB8::new(0, 0, 255);
+
+                image.line(13, 20, 80, 40, white);
+                image.line(20, 13, 40, 80, red);
+                image.line(80, 40, 13, 20, blue);
                 image.line(0, 0, 50, 50, RGB8::new(0, 255, 0));
 
                 render_result_tx
@@ -124,7 +130,7 @@ fn run_render_loop(
                         pixels: image.pixels,
                     })
                     .ok()
-                    .unwrap();
+                    .expect("Sending final image shoud succeed");
             }
         }
     }
