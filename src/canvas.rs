@@ -29,6 +29,18 @@ impl Canvas {
     }
 
     pub fn pixel(&mut self, x: i32, y: i32) -> &mut RGB8 {
+        debug_assert!(
+            x >= 0 && x < self.width as i32,
+            "x coordinate of '{}' is out of bounds 0 to {}",
+            x,
+            self.width as i32
+        );
+        debug_assert!(
+            y >= 0 && y < self.height as i32,
+            "y coordinate of '{}' is out of bounds 0 to {}",
+            y,
+            self.height as i32
+        );
         &mut self.pixels[y as usize * self.width + x as usize]
     }
 
@@ -146,5 +158,9 @@ impl Canvas {
                 error2 -= dx * 2;
             }
         }
+    }
+
+    pub fn flip_y(&mut self) {
+        self.pixels.reverse();
     }
 }

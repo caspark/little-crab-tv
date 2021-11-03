@@ -218,6 +218,12 @@ impl epi::App for TemplateApp {
                             }
                         });
 
+                        ui.horizontal(|ui| {
+                            ui.label("Image filename");
+                            ui.text_edit_singleline(&mut self.config.model_filename);
+                        });
+                        ui.end_row();
+
                         ui.add(
                             egui::Slider::new(&mut self.config.image_width, 1..=1000)
                                 .suffix("px")
