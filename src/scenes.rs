@@ -28,7 +28,6 @@ pub fn render_scene(image: &mut Canvas, config: &RenderConfig) {
                 .expect("model filename should exist");
 
             image.wireframe(&model, white);
-            image.flip_y(); // flip the image so it's rendered in the right orientation
         }
         RenderScene::Triangles => {
             let t0 = [IVec2::new(10, 70), IVec2::new(50, 160), IVec2::new(70, 80)];

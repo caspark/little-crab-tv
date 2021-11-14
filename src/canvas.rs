@@ -31,6 +31,7 @@ impl Canvas {
         self.pixels
     }
 
+    #[inline]
     pub fn pixel(&mut self, x: i32, y: i32) -> &mut RGB8 {
         debug_assert!(
             x >= 0 && x < self.width as i32,
@@ -44,7 +45,8 @@ impl Canvas {
             y,
             self.height as i32
         );
-        &mut self.pixels[y as usize * self.width + x as usize]
+        // TODO rather than flip the y coordinate here, it should often (almost always for a non-trivial scene?) be faster to flip the y coordinate at the end when the image is rendered.
+        &mut self.pixels[(self.height - y as usize) * self.width + x as usize]
     }
 
     // incorrect because it depends on choosing the correct "increment", which will vary based on
@@ -220,13 +222,90 @@ impl Canvas {
         }
     }
 
-    pub fn flip_y(&mut self) {
-        self.pixels.reverse();
-    }
-
-    pub fn triangle(&mut self, t0: IVec2, t1: IVec2, t2: IVec2, color: RGB8) {
+    /// Output a wireframe (unfilled) triangle by using line drawing
+    pub fn triangle_wireframe(&mut self, t0: IVec2, t1: IVec2, t2: IVec2, color: RGB8) {
         self.line(t0, t1, color);
         self.line(t1, t2, color);
         self.line(t2, t0, color);
+    }
+
+    /// Output a wireframe triangle with boundaries colored:
+    /// * "Vertically longest" edge (from top vertex to bottom vertex) will be red
+    /// * 2nd edge from bottom to middle vertex will be green
+    /// * 3rd edge from middle to top vertex will be blue
+    pub fn triangle_debug(&mut self, t0: IVec2, t1: IVec2, t2: IVec2) {
+        let (t0, t1, t2) = {
+            let mut vertices = [t0, t1, t2];
+            vertices.sort_by(|a, b| a.y.cmp(&b.y));
+            dbg!(vertices);
+            (vertices[0], vertices[1], vertices[2])
+        };
+
+        self.line(t2, t0, RGB8::new(255, 0, 0));
+        self.line(t0, t1, RGB8::new(0, 255, 0));
+        self.line(t1, t2, RGB8::new(0, 0, 255));
+    }
+
+    // Draw a filled triangle using line sweeping.
+    pub fn triangle(&mut self, t0: IVec2, t1: IVec2, t2: IVec2, color: RGB8) {
+        // 1. sort the vertices by y coordinate, as prep for step 2
+        let (t0, t1, t2) = {
+            let mut vertices = [t0, t1, t2];
+            vertices.sort_by(|a, b| a.y.cmp(&b.y));
+            dbg!(vertices);
+            (vertices[0], vertices[1], vertices[2])
+        };
+
+        // 2. Sweep from left to right. This is like outputting a "ladder" of strictly horizontal
+        //    lines, with the rungs (lines) being attached to the left and right sides of the
+        //    triangle, starting from the bottom vertex. However because it's a triangle, there will
+        //    be a phase where the rungs get bigger first until the middle vertex is reached, then
+        //    the rungs will get smaller again. So we split the sweeping (drawing of the ladder's
+        //    rungs) up into 2 parts, starting with the bottom of the ladder:
+        //   a) we start at the bottom most vertex (smallest y coordinate)
+        //   b) we know that the top vertex (largest y coordinate) will be in a straight line with
+        //      the bottom-most pixel
+        //   c) that line will form one side of the ladder (side `a` - could be left or right
+        //      depending on the triangle's orientation, aka "winding")
+        //   d) then the "middle" vertex (by y coordinate) will be in between the other 2
+        //   e) therefore we can interpolate from the bottom pixel to the middle pixel to find the
+        //      other edge of the ladder.
+        //   f) so then we draw a rung from one edge to the other and step up 1 y-pixel & repeat.
+        let total_height = t2.y - t0.y;
+        let segment_height = t1.y - t0.y + 1;
+        for y in t0.y..=t1.y {
+            // linearly interpolate position on the ladder's edges based on our current y-coordinate
+            let alpha = (y - t0.y) as f32 / total_height as f32;
+            let beta = (y - t0.y) as f32 / segment_height as f32;
+            // a and b are points on the edges of the ladder
+            let mut a = t0 + ((t2 - t0).as_vec2() * alpha).as_ivec2();
+            let mut b = t0 + ((t1 - t0).as_vec2() * beta).as_ivec2();
+            // we can only draw a line from left to right since we'll be incrementing the x
+            // coordinate by 1 each time, so swap the vertices if necessary
+            if a.x > b.x {
+                std::mem::swap(&mut a, &mut b);
+            }
+            // 3. draw a horizontal line between the two endpoints
+            for j in a.x..=b.x {
+                *self.pixel(j, y) = color;
+            }
+        }
+
+        // now repeat the same for the upper half of the triangle, from the middle vertex to the top
+        // vertex.
+        for y in t1.y..=t2.y {
+            let segment_height = t2.y - t1.y + 1;
+            let alpha = (y - t0.y) as f32 / total_height as f32;
+            let beta = (y - t2.y) as f32 / segment_height as f32;
+            let mut a = t0 + ((t2 - t0).as_vec2() * alpha).as_ivec2();
+            // FIXED: the original code is wrong here, it was using t1 + diff instead of t2 + diff
+            let mut b = t2 + ((t2 - t1).as_vec2() * beta).as_ivec2();
+            if a.x > b.x {
+                std::mem::swap(&mut a, &mut b);
+            }
+            for j in a.x..=b.x {
+                *self.pixel(j, y) = RGB8::new(255, 255, 0);
+            }
+        }
     }
 }
