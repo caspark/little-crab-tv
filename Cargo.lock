@@ -352,6 +352,7 @@ dependencies = [
  "eframe",
  "egui",
  "flume",
+ "glam",
  "lodepng",
  "rand",
  "rgb",
@@ -871,6 +872,15 @@ dependencies = [
  "khronos_api",
  "log",
  "xml-rs",
+]
+
+[[package]]
+name = "glam"
+version = "0.20.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c2c626156a479bfb5a4362c43f5abadd700af33ebc8db068089d9cb92493d6ab"
+dependencies = [
+ "serde",
 ]
 
 [[package]]

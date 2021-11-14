@@ -23,7 +23,7 @@ fn criterion_benchmark(c: &mut Criterion) {
     c.bench_function("line integer maths", |b| {
         let mut image = Canvas::new(100, 100);
         b.iter(|| {
-            image.line(0, 0, 99, 99, RGB8::new(255, 0, 0));
+            image.line_fastest(0, 0, 99, 99, RGB8::new(255, 0, 0));
         });
         black_box(image);
     });

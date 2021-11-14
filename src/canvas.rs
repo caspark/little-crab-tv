@@ -1,6 +1,7 @@
+use glam::IVec2;
 use rgb::RGB8;
 
-use crate::{maths::Vec2i, Model};
+use crate::Model;
 
 #[derive(Clone, Debug)]
 pub struct Canvas {
@@ -129,7 +130,14 @@ impl Canvas {
     }
 
     // Bresenham's algorithm 3 - correct & fastest, using integer maths instead of floating point
-    pub fn line(&mut self, mut x0: i32, mut y0: i32, mut x1: i32, mut y1: i32, color: RGB8) {
+    pub fn line_fastest(
+        &mut self,
+        mut x0: i32,
+        mut y0: i32,
+        mut x1: i32,
+        mut y1: i32,
+        color: RGB8,
+    ) {
         let steep = if (x0 - x1).abs() < (y0 - y1).abs() {
             std::mem::swap(&mut x0, &mut y0);
             std::mem::swap(&mut x1, &mut y1);
@@ -160,6 +168,12 @@ impl Canvas {
                 error2 -= dx * 2;
             }
         }
+    }
+
+    pub fn line(&mut self, p1: IVec2, p2: IVec2, color: RGB8) {
+        let (x0, y0) = (p1.x, p1.y);
+        let (x1, y1) = (p2.x, p2.y);
+        self.line_fastest(x0, y0, x1, y1, color);
     }
 
     pub fn wireframe(&mut self, model: &Model, color: RGB8) {
@@ -201,7 +215,7 @@ impl Canvas {
                 let x1 = ((v1.pos.x + 1.0) * (self.width as f32 - 1.0) / 2.0) as i32;
                 let y1 = ((v1.pos.y + 1.0) * (self.height as f32 - 1.0) / 2.0) as i32;
 
-                self.line(x0, y0, x1, y1, color);
+                self.line(IVec2::new(x0, y0), IVec2::new(x1, y1), color);
             }
         }
     }
@@ -210,9 +224,9 @@ impl Canvas {
         self.pixels.reverse();
     }
 
-    pub fn triangle(&mut self, t0: Vec2i, t1: Vec2i, t2: Vec2i, color: RGB8) {
-        self.line(t0.x, t0.y, t1.x, t1.y, color);
-        self.line(t1.x, t1.y, t2.x, t2.y, color);
-        self.line(t2.x, t2.y, t0.x, t0.y, color);
+    pub fn triangle(&mut self, t0: IVec2, t1: IVec2, t2: IVec2, color: RGB8) {
+        self.line(t0, t1, color);
+        self.line(t1, t2, color);
+        self.line(t2, t0, color);
     }
 }
