@@ -1,5 +1,7 @@
 use rgb::RGB8;
 
+use crate::{maths::Vec2i, Model};
+
 #[derive(Clone, Debug)]
 pub struct Canvas {
     width: usize,
@@ -160,7 +162,57 @@ impl Canvas {
         }
     }
 
+    pub fn wireframe(&mut self, model: &Model, color: RGB8) {
+        for face in model.faces.iter() {
+            for j in 0..3 {
+                let v0 = model.vertices[face.vertices[j]];
+                debug_assert!(
+                    face.vertices.len() == 3,
+                    "only faces with exactly 3 vertices are supported; found {} vertices",
+                    face.vertices.len()
+                );
+
+                let v1 = model.vertices[face.vertices[(j + 1) % 3]];
+
+                // this simplistic rendering code assumes that the vertice coordinates are
+                // between -1 and 1, so confirm that assumption
+                debug_assert!(
+                    -1.0 <= v0.pos.x && v0.pos.x <= 1.0,
+                    "x coordinate out of range: {}",
+                    v0.pos.x
+                );
+                debug_assert!(
+                    -1.0 <= v0.pos.y && v0.pos.y <= 1.0,
+                    "y coordinate out of range: {}",
+                    v0.pos.y
+                );
+                debug_assert!(
+                    -1.0 <= v1.pos.x && v1.pos.x <= 1.0,
+                    "x coordinate out of range: {}",
+                    v1.pos.x
+                );
+                debug_assert!(
+                    -1.0 <= v1.pos.y && v1.pos.y <= 1.0,
+                    "y coordinate out of range: {}",
+                    v1.pos.y
+                );
+                let x0 = ((v0.pos.x + 1.0) * (self.width as f32 - 1.0) / 2.0) as i32;
+                let y0 = ((v0.pos.y + 1.0) * (self.height as f32 - 1.0) / 2.0) as i32;
+                let x1 = ((v1.pos.x + 1.0) * (self.width as f32 - 1.0) / 2.0) as i32;
+                let y1 = ((v1.pos.y + 1.0) * (self.height as f32 - 1.0) / 2.0) as i32;
+
+                self.line(x0, y0, x1, y1, color);
+            }
+        }
+    }
+
     pub fn flip_y(&mut self) {
         self.pixels.reverse();
+    }
+
+    pub fn triangle(&mut self, t0: Vec2i, t1: Vec2i, t2: Vec2i, color: RGB8) {
+        self.line(t0.x, t0.y, t1.x, t1.y, color);
+        self.line(t1.x, t1.y, t2.x, t2.y, color);
+        self.line(t2.x, t2.y, t0.x, t0.y, color);
     }
 }

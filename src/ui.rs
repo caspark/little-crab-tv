@@ -3,8 +3,9 @@ use eframe::{
     epi,
 };
 use rgb::RGB8;
+use strum::IntoEnumIterator;
 
-use crate::{RenderCommand, RenderConfig, RenderResult};
+use crate::{RenderCommand, RenderConfig, RenderResult, RenderScene};
 
 #[derive(Debug, Default)]
 struct UiData {
@@ -188,6 +189,20 @@ impl epi::App for TemplateApp {
 
                     ui.heading("Render Configuration");
                     egui::warn_if_debug_build(ui);
+                    ui.end_row();
+
+                    ui.horizontal(|ui| {
+                        ui.label("Scene");
+                        ui.vertical(|ui| {
+                            for scene in RenderScene::iter() {
+                                ui.radio_value(
+                                    &mut self.config.scene,
+                                    scene,
+                                    format!("{}", scene.to_string()),
+                                );
+                            }
+                        });
+                    });
                     ui.end_row();
 
                     ui.horizontal(|ui| {
