@@ -296,8 +296,8 @@ impl Canvas {
         //      other edge of the ladder.
         //   f) so then we draw a rung from one edge to the other and step up 1 y-pixel & repeat.
         let total_height = t2.y - t0.y;
-        let segment_height = t1.y - t0.y + 1;
         for y in t0.y..=t1.y {
+            let segment_height = t1.y - t0.y + 1;
             // linearly interpolate position on the ladder's edges based on our current y-coordinate
             let alpha = (y - t0.y) as f32 / total_height as f32;
             let beta = (y - t0.y) as f32 / segment_height as f32;
