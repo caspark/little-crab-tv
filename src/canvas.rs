@@ -45,8 +45,20 @@ impl Canvas {
             y,
             self.height as i32
         );
-        // TODO rather than flip the y coordinate here, it should often (almost always for a non-trivial scene?) be faster to flip the y coordinate at the end when the image is rendered.
-        &mut self.pixels[(self.height - y as usize) * self.width + x as usize]
+        &mut self.pixels[y as usize * self.width + x as usize]
+    }
+
+    pub fn flip_y(&mut self) {
+        let (width, height) = dbg!((self.width, self.height));
+
+        for y in 0..height / 2 {
+            let y0 = y * width;
+            let y1 = (height - y - 1) * width;
+
+            for x in 0..width {
+                self.pixels.swap(y0 + x, y1 + x);
+            }
+        }
     }
 
     // incorrect because it depends on choosing the correct "increment", which will vary based on

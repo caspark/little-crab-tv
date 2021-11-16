@@ -5,15 +5,15 @@ mod scenes;
 mod ui;
 
 use crate::scenes::{render_scene, RenderScene};
-use crab_tv::canvas::Canvas;
+use crab_tv::Canvas;
 use rgb::RGB8;
 
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
 #[serde(default)] // if we add new fields, give them default values when deserializing old state
 pub struct RenderConfig {
     scene: RenderScene,
-    image_width: usize,
-    image_height: usize,
+    width: usize,
+    height: usize,
     model_filename: String,
     output_filename: String,
     display_actual_size: bool,
@@ -21,7 +21,7 @@ pub struct RenderConfig {
 
 impl RenderConfig {
     pub(crate) fn image_pixel_count(&self) -> usize {
-        self.image_width * self.image_height
+        self.width * self.height
     }
 }
 
@@ -30,9 +30,9 @@ impl Default for RenderConfig {
         use strum::IntoEnumIterator;
 
         Self {
-            scene: RenderScene::iter().last().unwrap(),
-            image_width: 200,
-            image_height: 200,
+            scene: RenderScene::iter().next().unwrap(),
+            width: 400,
+            height: 400,
             model_filename: "models/african_head.obj".to_owned(),
             output_filename: "target/output.png".to_owned(),
             display_actual_size: true,
@@ -80,13 +80,13 @@ fn run_render_loop(
             Ok(RenderCommand::Render { config }) => {
                 render_result_tx
                     .send(RenderResult::Reset {
-                        image_height: config.image_height,
-                        image_width: config.image_width,
+                        image_height: config.height,
+                        image_width: config.width,
                     })
                     .ok()
                     .expect("sending Reset should succeed");
 
-                let mut image = Canvas::new(config.image_width, config.image_height);
+                let mut image = Canvas::new(config.width, config.height);
                 render_scene(&mut image, &config);
 
                 render_result_tx

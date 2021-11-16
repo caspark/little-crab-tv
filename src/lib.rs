@@ -1,8 +1,11 @@
 #![deny(clippy::all)] // make all clippy warnings into errors
 #![allow(clippy::many_single_char_names)]
 
-pub mod canvas;
-pub mod model;
+mod canvas;
+mod colors;
+mod model;
+
+pub use colors::*;
 
 pub use canvas::Canvas;
-pub use model::{Model, Vertex};
+pub use model::{Face, Model, Vertex};

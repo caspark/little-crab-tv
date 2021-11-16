@@ -108,8 +108,8 @@ impl TemplateApp {
     fn trigger_render(&self) {
         println!(
             "Triggering render of {width}x{height} image (total {count} pixels)",
-            width = self.config.image_width,
-            height = self.config.image_height,
+            width = self.config.width,
+            height = self.config.height,
             count = self.config.image_pixel_count(),
         );
 
@@ -240,14 +240,14 @@ impl epi::App for TemplateApp {
                         ui.end_row();
 
                         ui.add(
-                            egui::Slider::new(&mut self.config.image_width, 1..=1000)
+                            egui::Slider::new(&mut self.config.width, 1..=1000)
                                 .suffix("px")
                                 .text("Image width"),
                         );
                         ui.end_row();
 
                         ui.add(
-                            egui::Slider::new(&mut self.config.image_height, 1..=1000)
+                            egui::Slider::new(&mut self.config.height, 1..=1000)
                                 .suffix("px")
                                 .text("Image height"),
                         );
