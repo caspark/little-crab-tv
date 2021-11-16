@@ -24,6 +24,34 @@ impl RenderConfig {
         self.width * self.height
     }
 }
+impl RenderConfig {
+    #![allow(unused)]
+
+    pub(crate) fn scene(&mut self, scene: RenderScene) -> &mut Self {
+        self.scene = scene;
+        self
+    }
+
+    pub(crate) fn dimensions(&mut self, width: usize, height: usize) -> &mut Self {
+        self.width = width;
+        self.height = height;
+        self
+    }
+
+    pub(crate) fn model_filename(&mut self, model_filename: String) -> &mut Self {
+        self.model_filename = model_filename;
+        self
+    }
+    pub(crate) fn output_filename(&mut self, output_filename: String) -> &mut Self {
+        self.output_filename = output_filename;
+        self
+    }
+
+    pub(crate) fn display_actual_size(&mut self, display_actual_size: bool) -> &mut Self {
+        self.display_actual_size = display_actual_size;
+        self
+    }
+}
 
 impl Default for RenderConfig {
     fn default() -> Self {
@@ -87,7 +115,7 @@ fn run_render_loop(
                     .expect("sending Reset should succeed");
 
                 let mut image = Canvas::new(config.width, config.height);
-                render_scene(&mut image, &config);
+                render_scene(&mut image, &config.scene, &config.model_filename);
 
                 render_result_tx
                     .send(RenderResult::FullImage {

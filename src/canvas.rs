@@ -19,6 +19,16 @@ impl Canvas {
         }
     }
 
+    /// Get a reference to the canvas's width.
+    pub fn width(&self) -> usize {
+        self.width
+    }
+
+    /// Get a reference to the canvas's height.
+    pub fn height(&self) -> usize {
+        self.height
+    }
+
     pub fn pixels(&self) -> &[RGB8] {
         &self.pixels
     }

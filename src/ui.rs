@@ -197,7 +197,7 @@ impl epi::App for TemplateApp {
                             for scene in RenderScene::iter() {
                                 ui.radio_value(
                                     &mut self.config.scene,
-                                    scene,
+                                    scene.clone(),
                                     format!("{}", scene.to_string()),
                                 );
                             }

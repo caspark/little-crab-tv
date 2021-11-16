@@ -1,6 +1,5 @@
 use glam::IVec2;
 
-use crate::RenderConfig;
 use crab_tv::{Canvas, Model, BLUE, CYAN, GREEN, RED, WHITE};
 
 #[derive(
@@ -15,7 +14,7 @@ use crab_tv::{Canvas, Model, BLUE, CYAN, GREEN, RED, WHITE};
     strum::Display,
 )]
 #[strum(serialize_all = "title_case")]
-pub(crate) enum RenderScene {
+pub enum RenderScene {
     FivePixels,
     Lines,
     Wireframe,
@@ -23,16 +22,16 @@ pub(crate) enum RenderScene {
     TrianglesRefined,
 }
 
-pub fn render_scene(image: &mut Canvas, config: &RenderConfig) {
-    match config.scene {
+pub fn render_scene(image: &mut Canvas, scene: &RenderScene, model_filename: &str) {
+    match scene {
         RenderScene::FivePixels => {
             // pixel in the middle
-            *image.pixel(config.width as i32 / 2, config.height as i32 / 2) = WHITE;
+            *image.pixel(image.width() as i32 / 2, image.height() as i32 / 2) = WHITE;
             // then each of the 4 corners
-            *image.pixel(0, config.height as i32 - 1) = RED; // top left
-            *image.pixel(config.width as i32 - 1, config.height as i32 - 1) = GREEN; // top right
+            *image.pixel(0, image.height() as i32 - 1) = RED; // top left
+            *image.pixel(image.width() as i32 - 1, image.height() as i32 - 1) = GREEN; // top right
             *image.pixel(0, 0) = BLUE; // bottom left
-            *image.pixel(config.width as i32 - 1, 0) = CYAN; // bottom right
+            *image.pixel(image.width() as i32 - 1, 0) = CYAN; // bottom right
         }
         RenderScene::Lines => {
             image.line(IVec2::new(13, 20), IVec2::new(80, 40), WHITE);
@@ -41,8 +40,8 @@ pub fn render_scene(image: &mut Canvas, config: &RenderConfig) {
             image.line(IVec2::new(0, 0), IVec2::new(50, 50), GREEN);
         }
         RenderScene::Wireframe => {
-            let model = Model::load_from_file(config.model_filename.as_str())
-                .expect("model filename should exist");
+            println!("Loading model: {}", model_filename);
+            let model = Model::load_from_file(model_filename).expect("model filename should exist");
 
             image.wireframe(&model, WHITE);
         }
@@ -73,4 +72,20 @@ pub fn render_scene(image: &mut Canvas, config: &RenderConfig) {
     }
 
     image.flip_y();
+}
+
+#[cfg(test)]
+mod tests {
+    use strum::IntoEnumIterator;
+
+    use super::*;
+
+    #[test]
+    fn every_scene_should_render_without_errors() {
+        for scene in RenderScene::iter() {
+            let mut image = Canvas::new(200, 200);
+            println!("Rendering scene: {:?}", scene);
+            render_scene(&mut image, &scene, "models/african_head.obj");
+        }
+    }
 }
