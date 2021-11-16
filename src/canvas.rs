@@ -247,7 +247,7 @@ impl Canvas {
     }
 
     // Draw a filled triangle using line sweeping.
-    pub fn triangle(&mut self, t0: IVec2, t1: IVec2, t2: IVec2, color: RGB8) {
+    pub fn triangle_linesweep_orig(&mut self, t0: IVec2, t1: IVec2, t2: IVec2, color: RGB8) {
         // 1. sort the vertices by y coordinate, as prep for step 2
         let (t0, t1, t2) = {
             let mut vertices = [t0, t1, t2];
@@ -304,7 +304,47 @@ impl Canvas {
                 std::mem::swap(&mut a, &mut b);
             }
             for j in a.x..=b.x {
-                *self.pixel(j, y) = RGB8::new(255, 255, 0);
+                *self.pixel(j, y) = color;
+            }
+        }
+    }
+
+    // Draw a filled triangle using line sweeping, approach 2
+    pub fn triangle_linesweep_refined(&mut self, t0: IVec2, t1: IVec2, t2: IVec2, color: RGB8) {
+        if t0.y == t1.y && t0.y == t2.y {
+            return; // ignore degenerate triangles
+        }
+
+        let (t0, t1, t2) = {
+            let mut vertices = [t0, t1, t2];
+            vertices.sort_by(|a, b| a.y.cmp(&b.y));
+            (vertices[0], vertices[1], vertices[2])
+        };
+
+        let total_height = t2.y - t0.y;
+        for i in 0..total_height {
+            let second_half = i > t1.y - t0.y || t1.y == t0.y;
+            let segment_height = if second_half {
+                t2.y - t1.y
+            } else {
+                t1.y - t0.y
+            } as f32;
+
+            let alpha = i as f32 / total_height as f32;
+            let beta = (i - (if second_half { t1.y - t0.y } else { 0 })) as f32 / segment_height;
+
+            let mut a = t0 + ((t2 - t0).as_vec2() * alpha).as_ivec2();
+            let mut b = if second_half {
+                t1 + ((t2 - t1).as_vec2() * beta).as_ivec2()
+            } else {
+                t0 + ((t1 - t0).as_vec2() * beta).as_ivec2()
+            };
+
+            if a.x > b.x {
+                std::mem::swap(&mut a, &mut b);
+            }
+            for j in a.x..=b.x {
+                *self.pixel(j, t0.y + i) = color;
             }
         }
     }

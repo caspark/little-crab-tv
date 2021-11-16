@@ -4,28 +4,9 @@
 mod scenes;
 mod ui;
 
+use crate::scenes::{render_scene, RenderScene};
 use crab_tv::canvas::Canvas;
 use rgb::RGB8;
-use scenes::render_scene;
-
-#[derive(
-    Copy,
-    Clone,
-    Debug,
-    serde::Serialize,
-    serde::Deserialize,
-    strum::EnumIter,
-    PartialEq,
-    Eq,
-    strum::Display,
-)]
-#[strum(serialize_all = "title_case")]
-pub(crate) enum RenderScene {
-    SinglePixel,
-    Lines,
-    Wireframe,
-    Triangles,
-}
 
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
 #[serde(default)] // if we add new fields, give them default values when deserializing old state
@@ -46,10 +27,12 @@ impl RenderConfig {
 
 impl Default for RenderConfig {
     fn default() -> Self {
+        use strum::IntoEnumIterator;
+
         Self {
-            scene: RenderScene::Lines,
-            image_width: 1000,
-            image_height: 1000,
+            scene: RenderScene::iter().last().unwrap(),
+            image_width: 200,
+            image_height: 200,
             model_filename: "models/african_head.obj".to_owned(),
             output_filename: "target/output.png".to_owned(),
             display_actual_size: true,
