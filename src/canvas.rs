@@ -268,7 +268,7 @@ impl Canvas {
     }
 
     // Draw a filled triangle using line sweeping.
-    pub fn triangle_linesweep_orig(&mut self, t0: IVec2, t1: IVec2, t2: IVec2, color: RGB8) {
+    pub fn triangle_linesweep_verbose(&mut self, t0: IVec2, t1: IVec2, t2: IVec2, color: RGB8) {
         if t0.y == t1.y && t0.y == t2.y {
             return; // ignore degenerate triangles
         }
@@ -297,7 +297,8 @@ impl Canvas {
         //   f) so then we draw a rung from one edge to the other and step up 1 y-pixel & repeat.
         let total_height = t2.y - t0.y;
         for y in t0.y..=t1.y {
-            let segment_height = t1.y - t0.y + 1;
+            // FIXED: the original code was adding 1 to the y coordinate, which causes wonky triangles.
+            let segment_height = t1.y - t0.y;
             // linearly interpolate position on the ladder's edges based on our current y-coordinate
             let alpha = (y - t0.y) as f32 / total_height as f32;
             let beta = (y - t0.y) as f32 / segment_height as f32;
@@ -318,7 +319,8 @@ impl Canvas {
         // now repeat the same for the upper half of the triangle, from the middle vertex to the top
         // vertex.
         for y in t1.y..=t2.y {
-            let segment_height = t2.y - t1.y + 1;
+            // FIXED: the original code was adding 1 to the y coordinate, which causes wonky triangles.
+            let segment_height = t2.y - t1.y;
             let alpha = (y - t0.y) as f32 / total_height as f32;
             let beta = (y - t2.y) as f32 / segment_height as f32;
             let mut a = t0 + ((t2 - t0).as_vec2() * alpha).as_ivec2();
@@ -334,7 +336,7 @@ impl Canvas {
     }
 
     // Draw a filled triangle using line sweeping, approach 2
-    pub fn triangle_linesweep_refined(&mut self, t0: IVec2, t1: IVec2, t2: IVec2, color: RGB8) {
+    pub fn triangle_linesweep_compact(&mut self, t0: IVec2, t1: IVec2, t2: IVec2, color: RGB8) {
         if t0.y == t1.y && t0.y == t2.y {
             return; // ignore degenerate triangles
         }

@@ -42,7 +42,7 @@ fn triangle_drawing(c: &mut Criterion) {
     group.bench_function("v1-sweep-verbose", |b| {
         let mut image = Canvas::new(100, 100);
         b.iter(|| {
-            image.triangle_linesweep_orig(t[0], t[1], t[2], WHITE);
+            image.triangle_linesweep_verbose(t[0], t[1], t[2], WHITE);
         });
         black_box(image);
     });
@@ -50,7 +50,7 @@ fn triangle_drawing(c: &mut Criterion) {
     group.bench_function("v2-sweep-compact", |b| {
         let mut image = Canvas::new(100, 100);
         b.iter(|| {
-            image.triangle_linesweep_refined(t[0], t[1], t[2], WHITE);
+            image.triangle_linesweep_compact(t[0], t[1], t[2], WHITE);
         });
         black_box(image);
     });
