@@ -1,4 +1,4 @@
-use glam::IVec2;
+use glam::{IVec2, Vec3};
 use rgb::RGB8;
 
 use crate::{maths, Model};
@@ -200,14 +200,14 @@ impl Canvas {
         self.line_fastest(x0, y0, x1, y1, color);
     }
 
-    pub fn wireframe(&mut self, model: &Model, color: RGB8) {
+    pub fn model_wireframe(&mut self, model: &Model, color: RGB8) {
         for face in model.faces.iter() {
+            debug_assert!(
+                face.vertices.len() == 3,
+                "only faces with exactly 3 vertices are supported; found {} vertices",
+                face.vertices.len()
+            );
             for j in 0..3 {
-                debug_assert!(
-                    face.vertices.len() == 3,
-                    "only faces with exactly 3 vertices are supported; found {} vertices",
-                    face.vertices.len()
-                );
                 let v0 = model.vertices[face.vertices[j]];
                 let v1 = model.vertices[face.vertices[(j + 1) % 3]];
 
@@ -243,36 +243,78 @@ impl Canvas {
         }
     }
 
-    pub fn colored_triangles(&mut self, model: &Model) {
+    pub fn model_colored_triangles(&mut self, model: &Model) {
         for face in model.faces.iter() {
+            debug_assert!(
+                face.vertices.len() == 3,
+                "only faces with exactly 3 vertices are supported; found {} vertices",
+                face.vertices.len()
+            );
             let mut screen_coords = [IVec2::new(0, 0); 3];
             for j in 0..3 {
-                debug_assert!(
-                    face.vertices.len() == 3,
-                    "only faces with exactly 3 vertices are supported; found {} vertices",
-                    face.vertices.len()
-                );
-                let v0 = model.vertices[face.vertices[j]];
+                let v = model.vertices[face.vertices[j]];
 
                 // this simplistic rendering code assumes that the vertice coordinates are
                 // between -1 and 1, so confirm that assumption
                 debug_assert!(
-                    -1.0 <= v0.pos.x && v0.pos.x <= 1.0,
+                    -1.0 <= v.pos.x && v.pos.x <= 1.0,
                     "x coordinate out of range: {}",
-                    v0.pos.x
+                    v.pos.x
                 );
                 debug_assert!(
-                    -1.0 <= v0.pos.y && v0.pos.y <= 1.0,
+                    -1.0 <= v.pos.y && v.pos.y <= 1.0,
                     "y coordinate out of range: {}",
-                    v0.pos.y
+                    v.pos.y
                 );
 
                 screen_coords[j] = IVec2::new(
-                    ((v0.pos.x + 1.0) * (self.width as f32 - 1.0) / 2.0) as i32,
-                    ((v0.pos.y + 1.0) * (self.height as f32 - 1.0) / 2.0) as i32,
+                    ((v.pos.x + 1.0) * (self.width as f32 - 1.0) / 2.0) as i32,
+                    ((v.pos.y + 1.0) * (self.height as f32 - 1.0) / 2.0) as i32,
                 );
             }
-            self.triangle_barycentric(&screen_coords, crate::colors::random_color());
+            self.triangle(&screen_coords, crate::colors::random_color());
+        }
+    }
+
+    pub fn model_flat_shaded(&mut self, model: &Model, light_dir: Vec3) {
+        for face in model.faces.iter() {
+            debug_assert!(
+                face.vertices.len() == 3,
+                "only faces with exactly 3 vertices are supported; found {} vertices",
+                face.vertices.len()
+            );
+            let mut screen_coords = [IVec2::new(0, 0); 3];
+            let mut world_coords = [Vec3::new(0.0, 0.0, 0.0); 3];
+            for j in 0..3 {
+                let v = model.vertices[face.vertices[j]];
+
+                // this simplistic rendering code assumes that the vertice coordinates are
+                // between -1 and 1, so confirm that assumption
+                debug_assert!(
+                    -1.0 <= v.pos.x && v.pos.x <= 1.0,
+                    "x coordinate out of range: {}",
+                    v.pos.x
+                );
+                debug_assert!(
+                    -1.0 <= v.pos.y && v.pos.y <= 1.0,
+                    "y coordinate out of range: {}",
+                    v.pos.y
+                );
+
+                screen_coords[j] = IVec2::new(
+                    ((v.pos.x + 1.0) * (self.width as f32 - 1.0) / 2.0) as i32,
+                    ((v.pos.y + 1.0) * (self.height as f32 - 1.0) / 2.0) as i32,
+                );
+                world_coords[j] = v.pos;
+            }
+
+            let n = (world_coords[2] - world_coords[0]).cross(world_coords[1] - world_coords[0]);
+            let n = n.normalize();
+            let intensity: f32 = n.dot(light_dir);
+            if intensity > 0.0 {
+                let w = (intensity * 255.0) as u8;
+                self.triangle(&screen_coords, RGB8::new(w, w, w));
+            }
         }
     }
 

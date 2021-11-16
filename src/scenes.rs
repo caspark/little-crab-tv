@@ -1,4 +1,4 @@
-use glam::IVec2;
+use glam::{IVec2, Vec3};
 
 use crab_tv::{Canvas, Model, BLUE, CYAN, GREEN, RED, WHITE};
 
@@ -22,6 +22,7 @@ pub enum RenderScene {
     TriangleLineSweepCompact,
     TriangleBarycentric,
     ModelColoredTriangles,
+    ModelFlatShaded,
 }
 
 pub fn render_scene(image: &mut Canvas, scene: &RenderScene, model_filename: &str) {
@@ -45,7 +46,7 @@ pub fn render_scene(image: &mut Canvas, scene: &RenderScene, model_filename: &st
             println!("Loading model: {}", model_filename);
             let model = Model::load_from_file(model_filename).expect("model filename should exist");
 
-            image.wireframe(&model, WHITE);
+            image.model_wireframe(&model, WHITE);
         }
         RenderScene::TriangleLineSweepVerbose => {
             let t0 = [IVec2::new(10, 70), IVec2::new(50, 160), IVec2::new(70, 80)];
@@ -87,7 +88,13 @@ pub fn render_scene(image: &mut Canvas, scene: &RenderScene, model_filename: &st
             println!("Loading model: {}", model_filename);
             let model = Model::load_from_file(model_filename).expect("model filename should exist");
 
-            image.colored_triangles(&model);
+            image.model_colored_triangles(&model);
+        }
+        RenderScene::ModelFlatShaded => {
+            println!("Loading model: {}", model_filename);
+            let model = Model::load_from_file(model_filename).expect("model filename should exist");
+
+            image.model_flat_shaded(&model, Vec3::new(0.0, 0.0, -1.0));
         }
     }
 
