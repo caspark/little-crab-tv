@@ -6,17 +6,20 @@ mod ui;
 
 use crate::scenes::{render_scene, RenderScene};
 use crab_tv::Canvas;
+use glam::Vec3;
 use rgb::RGB8;
 
-#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize, PartialEq)]
 #[serde(default)] // if we add new fields, give them default values when deserializing old state
 pub struct RenderConfig {
     scene: RenderScene,
     width: usize,
     height: usize,
     model_filename: String,
+    light_dir: Vec3,
     output_filename: String,
     display_actual_size: bool,
+    auto_rerender: bool,
 }
 
 impl RenderConfig {
@@ -58,12 +61,14 @@ impl Default for RenderConfig {
         use strum::IntoEnumIterator;
 
         Self {
-            scene: RenderScene::iter().next().unwrap(),
+            scene: RenderScene::iter().last().unwrap(),
             width: 400,
             height: 400,
             model_filename: "models/african_head.obj".to_owned(),
+            light_dir: Vec3::new(0.0, 0.0, -1.0),
             output_filename: "target/output.png".to_owned(),
             display_actual_size: true,
+            auto_rerender: true,
         }
     }
 }
@@ -115,7 +120,12 @@ fn run_render_loop(
                     .expect("sending Reset should succeed");
 
                 let mut image = Canvas::new(config.width, config.height);
-                render_scene(&mut image, &config.scene, &config.model_filename);
+                render_scene(
+                    &mut image,
+                    &config.scene,
+                    &config.model_filename,
+                    config.light_dir,
+                );
 
                 render_result_tx
                     .send(RenderResult::FullImage {

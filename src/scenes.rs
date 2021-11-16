@@ -25,7 +25,12 @@ pub enum RenderScene {
     ModelFlatShaded,
 }
 
-pub fn render_scene(image: &mut Canvas, scene: &RenderScene, model_filename: &str) {
+pub fn render_scene(
+    image: &mut Canvas,
+    scene: &RenderScene,
+    model_filename: &str,
+    light_dir: Vec3,
+) {
     match scene {
         RenderScene::FivePixels => {
             // pixel in the middle
@@ -94,7 +99,7 @@ pub fn render_scene(image: &mut Canvas, scene: &RenderScene, model_filename: &st
             println!("Loading model: {}", model_filename);
             let model = Model::load_from_file(model_filename).expect("model filename should exist");
 
-            image.model_flat_shaded(&model, Vec3::new(0.0, 0.0, -1.0));
+            image.model_flat_shaded(&model, light_dir);
         }
     }
 
@@ -112,7 +117,12 @@ mod tests {
         for scene in RenderScene::iter() {
             let mut image = Canvas::new(200, 200);
             println!("Rendering scene: {:?}", scene);
-            render_scene(&mut image, &scene, "models/african_head.obj");
+            render_scene(
+                &mut image,
+                &scene,
+                "models/african_head.obj",
+                Vec3::new(0.0, 0.0, -1.0),
+            );
         }
     }
 }

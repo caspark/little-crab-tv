@@ -2,6 +2,7 @@ use eframe::{
     egui::{self, TextureId},
     epi,
 };
+use glam::Vec3;
 use rgb::RGB8;
 use strum::IntoEnumIterator;
 
@@ -185,15 +186,22 @@ impl epi::App for TemplateApp {
             // .resizable(false)
             .show(ctx, |ui| {
                 egui::ScrollArea::auto_sized().show(ui, |ui| {
+                    let config_before = self.config.clone();
+
                     ui.spacing_mut().item_spacing = egui::Vec2::new(8.0, 8.0);
 
                     ui.heading("Render Configuration");
                     egui::warn_if_debug_build(ui);
                     ui.end_row();
 
+                    ui.collapsing("Reset to default", |ui| {
+                        if ui.button("Load default configuration").clicked() {
+                            self.config = RenderConfig::default();
+                        }
+                    });
+
                     ui.horizontal(|ui| {
                         ui.label("Scene");
-                        let scene_before = self.config.scene.clone();
                         ui.vertical(|ui| {
                             for scene in RenderScene::iter() {
                                 ui.radio_value(
@@ -203,9 +211,6 @@ impl epi::App for TemplateApp {
                                 );
                             }
                         });
-                        if scene_before != self.config.scene {
-                            self.trigger_render();
-                        }
                     });
                     ui.end_row();
 
@@ -223,12 +228,6 @@ impl epi::App for TemplateApp {
                     });
 
                     ui.collapsing("Rendering options", |ui| {
-                        ui.collapsing("Reset to default", |ui| {
-                            if ui.button("Load default render settings").clicked() {
-                                self.config = RenderConfig::default();
-                            }
-                        });
-
                         ui.horizontal(|ui| {
                             ui.label("Image filename");
                             ui.text_edit_singleline(&mut self.config.model_filename);
@@ -249,12 +248,26 @@ impl epi::App for TemplateApp {
                         );
                         ui.end_row();
 
-                        ui.vertical_centered_justified(|ui| {
-                            let button = egui::widgets::Button::new("Re-render image!");
-                            if ui.add(button).clicked() {
+                        vec3_editor(ui, "Light Dir", &mut self.config.light_dir);
+                        self.config.light_dir = self.config.light_dir.normalize_or_zero();
+                        ui.end_row();
+
+                        ui.checkbox(&mut self.config.auto_rerender, "Re-render on config change");
+                        ui.end_row();
+
+                        if self.config.auto_rerender {
+                            if config_before != self.config {
                                 self.trigger_render();
                             }
-                        });
+                        } else {
+                            ui.vertical_centered_justified(|ui| {
+                                let button = egui::widgets::Button::new("Re-render image!");
+                                if ui.add(button).clicked() {
+                                    self.trigger_render();
+                                }
+                            });
+                        }
+
                         ui.end_row();
                     });
                 })
@@ -281,4 +294,19 @@ impl epi::App for TemplateApp {
             }
         });
     }
+}
+
+fn vec3_editor(ui: &mut egui::Ui, label: &str, v: &mut Vec3) {
+    let speed = 0.1;
+
+    ui.horizontal(|ui| {
+        ui.label("x");
+        ui.add(egui::widgets::DragValue::new(&mut v.x).speed(speed));
+        ui.label("y");
+        ui.add(egui::widgets::DragValue::new(&mut v.y).speed(speed));
+        ui.label("z");
+        ui.add(egui::widgets::DragValue::new(&mut v.z).speed(speed));
+
+        ui.label(label);
+    });
 }
