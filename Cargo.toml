@@ -9,7 +9,7 @@ edition = "2021"
 derive_more = "0.99.9"
 rgb = "0.8.25"
 lodepng = "3.4"
-rand = "0.7.3"
+rand = "0.8.4"
 flume = "0.8.4"
 eframe = { version = "0.14.0", features = ["persistence"] }
 egui = "0.14.2"

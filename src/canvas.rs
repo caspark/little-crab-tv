@@ -1,4 +1,4 @@
-use glam::{IVec2, Vec3};
+use glam::IVec2;
 use rgb::RGB8;
 
 use crate::{maths, Model};
@@ -203,13 +203,12 @@ impl Canvas {
     pub fn wireframe(&mut self, model: &Model, color: RGB8) {
         for face in model.faces.iter() {
             for j in 0..3 {
-                let v0 = model.vertices[face.vertices[j]];
                 debug_assert!(
                     face.vertices.len() == 3,
                     "only faces with exactly 3 vertices are supported; found {} vertices",
                     face.vertices.len()
                 );
-
+                let v0 = model.vertices[face.vertices[j]];
                 let v1 = model.vertices[face.vertices[(j + 1) % 3]];
 
                 // this simplistic rendering code assumes that the vertice coordinates are
@@ -241,6 +240,39 @@ impl Canvas {
 
                 self.line(IVec2::new(x0, y0), IVec2::new(x1, y1), color);
             }
+        }
+    }
+
+    pub fn colored_triangles(&mut self, model: &Model) {
+        for face in model.faces.iter() {
+            let mut screen_coords = [IVec2::new(0, 0); 3];
+            for j in 0..3 {
+                debug_assert!(
+                    face.vertices.len() == 3,
+                    "only faces with exactly 3 vertices are supported; found {} vertices",
+                    face.vertices.len()
+                );
+                let v0 = model.vertices[face.vertices[j]];
+
+                // this simplistic rendering code assumes that the vertice coordinates are
+                // between -1 and 1, so confirm that assumption
+                debug_assert!(
+                    -1.0 <= v0.pos.x && v0.pos.x <= 1.0,
+                    "x coordinate out of range: {}",
+                    v0.pos.x
+                );
+                debug_assert!(
+                    -1.0 <= v0.pos.y && v0.pos.y <= 1.0,
+                    "y coordinate out of range: {}",
+                    v0.pos.y
+                );
+
+                screen_coords[j] = IVec2::new(
+                    ((v0.pos.x + 1.0) * (self.width as f32 - 1.0) / 2.0) as i32,
+                    ((v0.pos.y + 1.0) * (self.height as f32 - 1.0) / 2.0) as i32,
+                );
+            }
+            self.triangle_barycentric(&screen_coords, crate::colors::random_color());
         }
     }
 
@@ -375,7 +407,7 @@ impl Canvas {
         }
     }
 
-    pub fn triangle_3(&mut self, pts: &[IVec2], color: RGB8) {
+    pub fn triangle_barycentric(&mut self, pts: &[IVec2], color: RGB8) {
         let mut bboxmin = IVec2::new((self.width - 1) as i32, (self.height - 1) as i32);
         let mut bboxmax = IVec2::new(0, 0);
         let clamp = IVec2::new((self.width - 1) as i32, (self.height - 1) as i32);
@@ -397,5 +429,9 @@ impl Canvas {
                 }
             }
         }
+    }
+
+    pub fn triangle(&mut self, pts: &[IVec2], color: RGB8) {
+        self.triangle_barycentric(pts, color);
     }
 }

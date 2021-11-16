@@ -17,10 +17,11 @@ use crab_tv::{Canvas, Model, BLUE, CYAN, GREEN, RED, WHITE};
 pub enum RenderScene {
     FivePixels,
     Lines,
-    Wireframe,
+    ModelWireframe,
     TriangleLineSweepVerbose,
     TriangleLineSweepCompact,
     TriangleBarycentric,
+    ModelColoredTriangles,
 }
 
 pub fn render_scene(image: &mut Canvas, scene: &RenderScene, model_filename: &str) {
@@ -40,7 +41,7 @@ pub fn render_scene(image: &mut Canvas, scene: &RenderScene, model_filename: &st
             image.line(IVec2::new(80, 40), IVec2::new(13, 20), BLUE);
             image.line(IVec2::new(0, 0), IVec2::new(50, 50), GREEN);
         }
-        RenderScene::Wireframe => {
+        RenderScene::ModelWireframe => {
             println!("Loading model: {}", model_filename);
             let model = Model::load_from_file(model_filename).expect("model filename should exist");
 
@@ -78,9 +79,15 @@ pub fn render_scene(image: &mut Canvas, scene: &RenderScene, model_filename: &st
                 IVec2::new(120, 160),
                 IVec2::new(130, 180),
             ];
-            image.triangle_3(&t0, RED);
-            image.triangle_3(&t1, WHITE);
-            image.triangle_3(&t2, GREEN);
+            image.triangle_barycentric(&t0, RED);
+            image.triangle_barycentric(&t1, WHITE);
+            image.triangle_barycentric(&t2, GREEN);
+        }
+        RenderScene::ModelColoredTriangles => {
+            println!("Loading model: {}", model_filename);
+            let model = Model::load_from_file(model_filename).expect("model filename should exist");
+
+            image.colored_triangles(&model);
         }
     }
 

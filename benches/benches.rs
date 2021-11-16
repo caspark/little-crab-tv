@@ -58,7 +58,7 @@ fn triangle_drawing(c: &mut Criterion) {
     group.bench_function("v3-barycentric", |b| {
         let mut image = Canvas::new(100, 100);
         b.iter(|| {
-            image.triangle_3(&t, WHITE);
+            image.triangle_barycentric(&t, WHITE);
         });
         black_box(image);
     });
