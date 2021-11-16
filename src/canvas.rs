@@ -59,7 +59,7 @@ impl Canvas {
     }
 
     pub fn flip_y(&mut self) {
-        let (width, height) = dbg!((self.width, self.height));
+        let (width, height) = (self.width, self.height);
 
         for y in 0..height / 2 {
             let y0 = y * width;
@@ -259,7 +259,6 @@ impl Canvas {
         let (t0, t1, t2) = {
             let mut vertices = [t0, t1, t2];
             vertices.sort_by(|a, b| a.y.cmp(&b.y));
-            dbg!(vertices);
             (vertices[0], vertices[1], vertices[2])
         };
 
@@ -270,11 +269,14 @@ impl Canvas {
 
     // Draw a filled triangle using line sweeping.
     pub fn triangle_linesweep_orig(&mut self, t0: IVec2, t1: IVec2, t2: IVec2, color: RGB8) {
+        if t0.y == t1.y && t0.y == t2.y {
+            return; // ignore degenerate triangles
+        }
+
         // 1. sort the vertices by y coordinate, as prep for step 2
         let (t0, t1, t2) = {
             let mut vertices = [t0, t1, t2];
             vertices.sort_by(|a, b| a.y.cmp(&b.y));
-            dbg!(vertices);
             (vertices[0], vertices[1], vertices[2])
         };
 
