@@ -193,6 +193,7 @@ impl epi::App for TemplateApp {
 
                     ui.horizontal(|ui| {
                         ui.label("Scene");
+                        let scene_before = self.config.scene.clone();
                         ui.vertical(|ui| {
                             for scene in RenderScene::iter() {
                                 ui.radio_value(
@@ -202,20 +203,15 @@ impl epi::App for TemplateApp {
                                 );
                             }
                         });
+                        if scene_before != self.config.scene {
+                            self.trigger_render();
+                        }
                     });
                     ui.end_row();
 
                     ui.horizontal(|ui| {
                         ui.label("Save as");
                         ui.text_edit_singleline(&mut self.config.output_filename);
-                    });
-                    ui.end_row();
-
-                    ui.vertical_centered_justified(|ui| {
-                        let button = egui::widgets::Button::new("Render image!");
-                        if ui.add(button).clicked() {
-                            self.trigger_render();
-                        }
                     });
                     ui.end_row();
 
@@ -251,6 +247,14 @@ impl epi::App for TemplateApp {
                                 .suffix("px")
                                 .text("Image height"),
                         );
+                        ui.end_row();
+
+                        ui.vertical_centered_justified(|ui| {
+                            let button = egui::widgets::Button::new("Re-render image!");
+                            if ui.add(button).clicked() {
+                                self.trigger_render();
+                            }
+                        });
                         ui.end_row();
                     });
                 })
