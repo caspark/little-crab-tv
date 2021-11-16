@@ -3,6 +3,7 @@
 
 mod canvas;
 mod colors;
+mod maths;
 mod model;
 
 pub use colors::*;

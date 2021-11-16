@@ -18,8 +18,9 @@ pub enum RenderScene {
     FivePixels,
     Lines,
     Wireframe,
-    TrianglesOrig,
-    TrianglesRefined,
+    TriangleLineSweepVerbose,
+    TriangleLineSweepCompact,
+    TriangleBarycentric,
 }
 
 pub fn render_scene(image: &mut Canvas, scene: &RenderScene, model_filename: &str) {
@@ -45,7 +46,7 @@ pub fn render_scene(image: &mut Canvas, scene: &RenderScene, model_filename: &st
 
             image.wireframe(&model, WHITE);
         }
-        RenderScene::TrianglesOrig => {
+        RenderScene::TriangleLineSweepVerbose => {
             let t0 = [IVec2::new(10, 70), IVec2::new(50, 160), IVec2::new(70, 80)];
             let t1 = [IVec2::new(180, 50), IVec2::new(150, 1), IVec2::new(70, 180)];
             let t2 = [
@@ -57,7 +58,7 @@ pub fn render_scene(image: &mut Canvas, scene: &RenderScene, model_filename: &st
             image.triangle_linesweep_verbose(t1[0], t1[1], t1[2], WHITE);
             image.triangle_linesweep_verbose(t2[0], t2[1], t2[2], GREEN);
         }
-        RenderScene::TrianglesRefined => {
+        RenderScene::TriangleLineSweepCompact => {
             let t0 = [IVec2::new(10, 70), IVec2::new(50, 160), IVec2::new(70, 80)];
             let t1 = [IVec2::new(180, 50), IVec2::new(150, 1), IVec2::new(70, 180)];
             let t2 = [
@@ -68,6 +69,18 @@ pub fn render_scene(image: &mut Canvas, scene: &RenderScene, model_filename: &st
             image.triangle_linesweep_compact(t0[0], t0[1], t0[2], RED);
             image.triangle_linesweep_compact(t1[0], t1[1], t1[2], WHITE);
             image.triangle_linesweep_compact(t2[0], t2[1], t2[2], GREEN);
+        }
+        RenderScene::TriangleBarycentric => {
+            let t0 = [IVec2::new(10, 70), IVec2::new(50, 160), IVec2::new(70, 80)];
+            let t1 = [IVec2::new(180, 50), IVec2::new(150, 1), IVec2::new(70, 180)];
+            let t2 = [
+                IVec2::new(180, 150),
+                IVec2::new(120, 160),
+                IVec2::new(130, 180),
+            ];
+            image.triangle_3(&t0, RED);
+            image.triangle_3(&t1, WHITE);
+            image.triangle_3(&t2, GREEN);
         }
     }
 

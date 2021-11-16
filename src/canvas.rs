@@ -1,7 +1,7 @@
-use glam::IVec2;
+use glam::{IVec2, Vec3};
 use rgb::RGB8;
 
-use crate::Model;
+use crate::{maths, Model};
 
 #[derive(Clone, Debug)]
 pub struct Canvas {
@@ -371,6 +371,30 @@ impl Canvas {
             }
             for j in a.x..=b.x {
                 *self.pixel(j, t0.y + i) = color;
+            }
+        }
+    }
+
+    pub fn triangle_3(&mut self, pts: &[IVec2], color: RGB8) {
+        let mut bboxmin = IVec2::new((self.width - 1) as i32, (self.height - 1) as i32);
+        let mut bboxmax = IVec2::new(0, 0);
+        let clamp = IVec2::new((self.width - 1) as i32, (self.height - 1) as i32);
+
+        for i in 0..3 {
+            for j in 0..2 {
+                bboxmin[j] = std::cmp::max(0, std::cmp::min(bboxmin[j], pts[i][j]));
+                bboxmax[j] = std::cmp::min(clamp[j], std::cmp::max(bboxmax[j], pts[i][j]));
+            }
+        }
+
+        let mut p: IVec2;
+        for i in bboxmin.x..=bboxmax.x {
+            for j in bboxmin.y..=bboxmax.y {
+                p = IVec2::new(i, j);
+                let bc_screen = maths::barycentric_coords(pts, p);
+                if bc_screen.x >= 0.0 && bc_screen.y >= 0.0 && bc_screen.z >= 0.0 {
+                    *self.pixel(i, j) = color;
+                }
             }
         }
     }
