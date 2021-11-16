@@ -300,7 +300,9 @@ impl Canvas {
     }
 
     // Draw a filled triangle using line sweeping.
-    pub fn triangle_linesweep_verbose(&mut self, t0: IVec2, t1: IVec2, t2: IVec2, color: RGB8) {
+    pub fn triangle_linesweep_verbose(&mut self, pts: &[IVec2], color: RGB8) {
+        let (t0, t1, t2) = (pts[0], pts[1], pts[2]);
+
         if t0.y == t1.y && t0.y == t2.y {
             return; // ignore degenerate triangles
         }
@@ -368,7 +370,9 @@ impl Canvas {
     }
 
     // Draw a filled triangle using line sweeping, approach 2
-    pub fn triangle_linesweep_compact(&mut self, t0: IVec2, t1: IVec2, t2: IVec2, color: RGB8) {
+    pub fn triangle_linesweep_compact(&mut self, pts: &[IVec2], color: RGB8) {
+        let (t0, t1, t2) = (pts[0], pts[1], pts[2]);
+
         if t0.y == t1.y && t0.y == t2.y {
             return; // ignore degenerate triangles
         }

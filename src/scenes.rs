@@ -55,9 +55,9 @@ pub fn render_scene(image: &mut Canvas, scene: &RenderScene, model_filename: &st
                 IVec2::new(120, 160),
                 IVec2::new(130, 180),
             ];
-            image.triangle_linesweep_verbose(t0[0], t0[1], t0[2], RED);
-            image.triangle_linesweep_verbose(t1[0], t1[1], t1[2], WHITE);
-            image.triangle_linesweep_verbose(t2[0], t2[1], t2[2], GREEN);
+            image.triangle_linesweep_verbose(&t0, RED);
+            image.triangle_linesweep_verbose(&t1, WHITE);
+            image.triangle_linesweep_verbose(&t2, GREEN);
         }
         RenderScene::TriangleLineSweepCompact => {
             let t0 = [IVec2::new(10, 70), IVec2::new(50, 160), IVec2::new(70, 80)];
@@ -67,9 +67,9 @@ pub fn render_scene(image: &mut Canvas, scene: &RenderScene, model_filename: &st
                 IVec2::new(120, 160),
                 IVec2::new(130, 180),
             ];
-            image.triangle_linesweep_compact(t0[0], t0[1], t0[2], RED);
-            image.triangle_linesweep_compact(t1[0], t1[1], t1[2], WHITE);
-            image.triangle_linesweep_compact(t2[0], t2[1], t2[2], GREEN);
+            image.triangle_linesweep_compact(&t0, RED);
+            image.triangle_linesweep_compact(&t1, WHITE);
+            image.triangle_linesweep_compact(&t2, GREEN);
         }
         RenderScene::TriangleBarycentric => {
             let t0 = [IVec2::new(10, 70), IVec2::new(50, 160), IVec2::new(70, 80)];
