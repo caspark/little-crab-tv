@@ -26,6 +26,21 @@ impl RenderConfig {
     pub(crate) fn image_pixel_count(&self) -> usize {
         self.width * self.height
     }
+
+    pub(crate) fn validate(&self) -> Result<(), String> {
+        if self.width < 200 {
+            return Err("Width must be 200 or greater".to_owned());
+        } else if self.width > 5000 {
+            return Err("Width must be 5000 or less".to_owned());
+        }
+        if self.height < 200 {
+            return Err("Height must be 200 or greater".to_owned());
+        } else if self.height > 5000 {
+            return Err("Height must be 5000 or less".to_owned());
+        }
+
+        Ok(())
+    }
 }
 impl RenderConfig {
     #![allow(unused)]

@@ -235,14 +235,14 @@ impl epi::App for TemplateApp {
                         ui.end_row();
 
                         ui.add(
-                            egui::Slider::new(&mut self.config.width, 1..=1000)
+                            egui::Slider::new(&mut self.config.width, 200..=1000)
                                 .suffix("px")
                                 .text("Image width"),
                         );
                         ui.end_row();
 
                         ui.add(
-                            egui::Slider::new(&mut self.config.height, 1..=1000)
+                            egui::Slider::new(&mut self.config.height, 200..=1000)
                                 .suffix("px")
                                 .text("Image height"),
                         );
@@ -260,19 +260,22 @@ impl epi::App for TemplateApp {
                         ui.checkbox(&mut self.config.auto_rerender, "Re-render on config change");
                         ui.end_row();
 
-                        if self.config.auto_rerender {
-                            if config_before != self.config {
-                                self.trigger_render();
-                            }
+                        if let Some(err_msg) = self.config.validate().err() {
+                            ui.colored_label(egui::Color32::RED, format!("Error: {}", err_msg));
                         } else {
-                            ui.vertical_centered_justified(|ui| {
-                                let button = egui::widgets::Button::new("Re-render image!");
-                                if ui.add(button).clicked() {
+                            if self.config.auto_rerender {
+                                if config_before != self.config {
                                     self.trigger_render();
                                 }
-                            });
+                            } else {
+                                ui.vertical_centered_justified(|ui| {
+                                    let button = egui::widgets::Button::new("Re-render image!");
+                                    if ui.add(button).clicked() {
+                                        self.trigger_render();
+                                    }
+                                });
+                            }
                         }
-
                         ui.end_row();
                     });
                 })
@@ -302,7 +305,7 @@ impl epi::App for TemplateApp {
 }
 
 fn vec3_editor(ui: &mut egui::Ui, label: &str, v: &mut Vec3) {
-    let speed = 0.1;
+    let speed = 0.01;
 
     ui.horizontal(|ui| {
         ui.label("x");
