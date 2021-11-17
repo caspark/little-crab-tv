@@ -1,13 +1,17 @@
-use glam::{IVec2, Vec3};
+use glam::{IVec2, Vec2, Vec3};
 use rgb::RGB8;
 
-use crate::{maths, Model};
+use crate::{
+    maths::{self, yolo_max, yolo_min},
+    Model,
+};
 
 #[derive(Clone, Debug)]
 pub struct Canvas {
     width: usize,
     height: usize,
     pixels: Vec<RGB8>,
+    z_buffer: Vec<f32>,
 }
 
 impl Canvas {
@@ -16,6 +20,7 @@ impl Canvas {
             width,
             height,
             pixels: vec![RGB8::default(); width * height],
+            z_buffer: vec![f32::NEG_INFINITY; width * height],
         }
     }
 
@@ -56,6 +61,23 @@ impl Canvas {
             self.height as i32
         );
         &mut self.pixels[y as usize * self.width + x as usize]
+    }
+
+    #[inline]
+    pub fn z_buffer_at(&mut self, x: i32, y: i32) -> &mut f32 {
+        debug_assert!(
+            x >= 0 && x < self.width as i32,
+            "x coordinate of '{}' is out of bounds 0 to {}",
+            x,
+            self.width as i32
+        );
+        debug_assert!(
+            y >= 0 && y < self.height as i32,
+            "y coordinate of '{}' is out of bounds 0 to {}",
+            y,
+            self.height as i32
+        );
+        &mut self.z_buffer[y as usize * self.width + x as usize]
     }
 
     pub fn flip_y(&mut self) {
@@ -272,19 +294,20 @@ impl Canvas {
                     ((v.pos.y + 1.0) * (self.height as f32 - 1.0) / 2.0) as i32,
                 );
             }
-            self.triangle(&screen_coords, crate::colors::random_color());
+            self.triangle_barycentric(&screen_coords, crate::colors::random_color());
         }
     }
 
-    pub fn model_flat_shaded(&mut self, model: &Model, light_dir: Vec3) {
+    pub fn model_flat_shaded(&mut self, model: &Model, light_dir: Vec3, depth_tested: bool) {
         for face in model.faces.iter() {
             debug_assert!(
                 face.vertices.len() == 3,
                 "only faces with exactly 3 vertices are supported; found {} vertices",
                 face.vertices.len()
             );
-            let mut screen_coords = [IVec2::new(0, 0); 3];
-            let mut world_coords = [Vec3::new(0.0, 0.0, 0.0); 3];
+            let mut screen_coords_2d = [IVec2::ZERO; 3];
+            let mut screen_coords_3d = [Vec3::ZERO; 3];
+            let mut world_coords = [Vec3::ZERO; 3];
             for j in 0..3 {
                 let v = model.vertices[face.vertices[j]];
 
@@ -301,9 +324,14 @@ impl Canvas {
                     v.pos.y
                 );
 
-                screen_coords[j] = IVec2::new(
+                screen_coords_2d[j] = IVec2::new(
                     ((v.pos.x + 1.0) * (self.width as f32 - 1.0) / 2.0) as i32,
                     ((v.pos.y + 1.0) * (self.height as f32 - 1.0) / 2.0) as i32,
+                );
+                screen_coords_3d[j] = Vec3::new(
+                    (v.pos.x + 1.0) * (self.width as f32 - 1.0) / 2.0,
+                    (v.pos.y + 1.0) * (self.height as f32 - 1.0) / 2.0,
+                    v.pos.z,
                 );
                 world_coords[j] = v.pos;
             }
@@ -313,7 +341,13 @@ impl Canvas {
             let intensity: f32 = n.dot(light_dir);
             if intensity > 0.0 {
                 let w = (intensity * 255.0) as u8;
-                self.triangle(&screen_coords, RGB8::new(w, w, w));
+                if depth_tested {
+                    // Avoid overwriting pixels that are closer to the camera than the pixel being
+                    // rendered.
+                    self.triangle_barycentric_depth_tested(&screen_coords_3d, RGB8::new(w, w, w));
+                } else {
+                    self.triangle_barycentric(&screen_coords_2d, RGB8::new(w, w, w));
+                }
             }
         }
     }
@@ -469,7 +503,7 @@ impl Canvas {
         for i in bboxmin.x..=bboxmax.x {
             for j in bboxmin.y..=bboxmax.y {
                 p = IVec2::new(i, j);
-                let bc_screen = maths::barycentric_coords(pts, p);
+                let bc_screen = maths::barycentric_coords_2d(pts, p);
                 if bc_screen.x >= 0.0 && bc_screen.y >= 0.0 && bc_screen.z >= 0.0 {
                     *self.pixel(i, j) = color;
                 }
@@ -477,7 +511,39 @@ impl Canvas {
         }
     }
 
-    pub fn triangle(&mut self, pts: &[IVec2], color: RGB8) {
-        self.triangle_barycentric(pts, color);
+    pub fn triangle_barycentric_depth_tested(&mut self, pts: &[Vec3], color: RGB8) {
+        let mut bboxmin = Vec2::new((self.width - 1) as f32, (self.height - 1) as f32);
+        let mut bboxmax = Vec2::new(0.0, 0.0);
+        let clamp = Vec2::new((self.width - 1) as f32, (self.height - 1) as f32);
+
+        for i in 0..3 {
+            for j in 0..2 {
+                bboxmin[j] = yolo_max(0.0, yolo_min(bboxmin[j], pts[i][j]));
+                bboxmax[j] = yolo_min(clamp[j], yolo_max(bboxmax[j], pts[i][j]));
+            }
+        }
+
+        for i in (bboxmin.x as i32)..=(bboxmax.x as i32) {
+            for j in (bboxmin.y as i32)..=(bboxmax.y as i32) {
+                let p = Vec2::new(i as f32, j as f32);
+                let bc_screen = maths::barycentric_coords_3d(pts, p);
+                if bc_screen.x < 0.0 || bc_screen.y < 0.0 || bc_screen.z < 0.0 {
+                    continue;
+                }
+                let mut pixel_z = 0.0;
+                for k in 0..3 {
+                    pixel_z += pts[k][2] * bc_screen[k];
+                }
+                let z_buf_for_pixel = self.z_buffer_at(i, j);
+                if *z_buf_for_pixel < pixel_z {
+                    *z_buf_for_pixel = pixel_z;
+                    *self.pixel(i, j) = color;
+                }
+            }
+        }
+    }
+
+    pub fn triangle(&mut self, pts: &[Vec3], color: RGB8) {
+        self.triangle_barycentric_depth_tested(pts, color);
     }
 }

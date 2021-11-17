@@ -23,6 +23,7 @@ pub enum RenderScene {
     TriangleBarycentric,
     ModelColoredTriangles,
     ModelFlatShaded,
+    ModelFlatShadedDepthTested,
 }
 
 pub fn render_scene(
@@ -99,7 +100,13 @@ pub fn render_scene(
             println!("Loading model: {}", model_filename);
             let model = Model::load_from_file(model_filename).expect("model filename should exist");
 
-            image.model_flat_shaded(&model, light_dir);
+            image.model_flat_shaded(&model, light_dir, false);
+        }
+        RenderScene::ModelFlatShadedDepthTested => {
+            println!("Loading model: {}", model_filename);
+            let model = Model::load_from_file(model_filename).expect("model filename should exist");
+
+            image.model_flat_shaded(&model, light_dir, true);
         }
     }
 
