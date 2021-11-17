@@ -248,8 +248,13 @@ impl epi::App for TemplateApp {
                         );
                         ui.end_row();
 
+                        let light_dir_before = self.config.light_dir;
                         vec3_editor(ui, "Light Dir", &mut self.config.light_dir);
-                        self.config.light_dir = self.config.light_dir.normalize_or_zero();
+                        if light_dir_before != self.config.light_dir {
+                            // only normalize if the chosen light direction has changed, otherwise
+                            // this will cause a render loop for certain floating point values
+                            self.config.light_dir = self.config.light_dir.normalize_or_zero();
+                        }
                         ui.end_row();
 
                         ui.checkbox(&mut self.config.auto_rerender, "Re-render on config change");
