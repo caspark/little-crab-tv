@@ -140,7 +140,9 @@ impl epi::App for TemplateApp {
             self.config = epi::get_value(storage, epi::APP_KEY).unwrap_or_default()
         }
 
-        self.trigger_render();
+        if self.config.validate().is_ok() {
+            self.trigger_render();
+        }
     }
 
     /// Called by the frame work to save state before shutdown.
@@ -256,28 +258,28 @@ impl epi::App for TemplateApp {
                             self.config.light_dir = self.config.light_dir.normalize_or_zero();
                         }
                         ui.end_row();
+                    });
 
-                        ui.checkbox(&mut self.config.auto_rerender, "Re-render on config change");
-                        ui.end_row();
+                    ui.checkbox(&mut self.config.auto_rerender, "Re-render on config change");
+                    ui.end_row();
 
-                        if let Some(err_msg) = self.config.validate().err() {
-                            ui.colored_label(egui::Color32::RED, format!("Error: {}", err_msg));
+                    if let Some(err_msg) = self.config.validate().err() {
+                        ui.colored_label(egui::Color32::RED, format!("Error: {}", err_msg));
+                    } else {
+                        if self.config.auto_rerender {
+                            if config_before != self.config {
+                                self.trigger_render();
+                            }
                         } else {
-                            if self.config.auto_rerender {
-                                if config_before != self.config {
+                            ui.vertical_centered_justified(|ui| {
+                                let button = egui::widgets::Button::new("Re-render image!");
+                                if ui.add(button).clicked() {
                                     self.trigger_render();
                                 }
-                            } else {
-                                ui.vertical_centered_justified(|ui| {
-                                    let button = egui::widgets::Button::new("Re-render image!");
-                                    if ui.add(button).clicked() {
-                                        self.trigger_render();
-                                    }
-                                });
-                            }
+                            });
                         }
-                        ui.end_row();
-                    });
+                    }
+                    ui.end_row();
                 })
             });
 
