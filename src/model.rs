@@ -65,6 +65,12 @@ impl Model {
                         );
                         face_vertices.push((vertex_index - 1) as usize);
                     }
+
+                    debug_assert!(
+                        face_vertices.len() == 3,
+                        "only faces with exactly 3 vertices are supported; found {} vertices",
+                        face_vertices.len()
+                    );
                     faces.push(Face::new(face_vertices));
                 }
                 _ => (), // ignore unknown line type

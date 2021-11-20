@@ -224,11 +224,6 @@ impl Canvas {
 
     pub fn model_wireframe(&mut self, model: &Model, color: RGB8) {
         for face in model.faces.iter() {
-            debug_assert!(
-                face.vertices.len() == 3,
-                "only faces with exactly 3 vertices are supported; found {} vertices",
-                face.vertices.len()
-            );
             for j in 0..3 {
                 let v0 = model.vertices[face.vertices[j]];
                 let v1 = model.vertices[face.vertices[(j + 1) % 3]];
@@ -267,11 +262,6 @@ impl Canvas {
 
     pub fn model_colored_triangles(&mut self, model: &Model) {
         for face in model.faces.iter() {
-            debug_assert!(
-                face.vertices.len() == 3,
-                "only faces with exactly 3 vertices are supported; found {} vertices",
-                face.vertices.len()
-            );
             let mut screen_coords = [IVec2::new(0, 0); 3];
             for j in 0..3 {
                 let v = model.vertices[face.vertices[j]];
@@ -300,11 +290,6 @@ impl Canvas {
 
     pub fn model_flat_shaded(&mut self, model: &Model, light_dir: Vec3, depth_tested: bool) {
         for face in model.faces.iter() {
-            debug_assert!(
-                face.vertices.len() == 3,
-                "only faces with exactly 3 vertices are supported; found {} vertices",
-                face.vertices.len()
-            );
             let mut screen_coords_2d = [IVec2::ZERO; 3];
             let mut screen_coords_3d = [Vec3::ZERO; 3];
             let mut world_coords = [Vec3::ZERO; 3];
