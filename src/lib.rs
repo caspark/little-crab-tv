@@ -9,4 +9,4 @@ mod model;
 pub use colors::*;
 
 pub use canvas::Canvas;
-pub use model::{Face, Model, Vertex};
+pub use model::{Face, Model, ModelInput, Vertex};

@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+
 use eframe::{
     egui::{self, TextureId},
     epi,
@@ -6,7 +8,7 @@ use glam::Vec3;
 use rgb::RGB8;
 use strum::IntoEnumIterator;
 
-use crate::{RenderCommand, RenderConfig, RenderResult, RenderScene};
+use crate::{RenderCommand, RenderConfig, RenderInput, RenderResult, RenderScene};
 
 #[derive(Debug, Default)]
 struct UiData {
@@ -106,7 +108,7 @@ impl TemplateApp {
         }
     }
 
-    fn trigger_render(&self) {
+    fn trigger_render(&self, input: RenderInput) {
         println!(
             "Triggering render of {width}x{height} image (total {count} pixels)",
             width = self.config.width,
@@ -115,9 +117,7 @@ impl TemplateApp {
         );
 
         self.render_command_tx
-            .send(RenderCommand::Render {
-                config: self.config.clone(),
-            })
+            .send(RenderCommand::Render { input })
             .ok()
             .expect("render command send should succeed");
     }
@@ -140,8 +140,8 @@ impl epi::App for TemplateApp {
             self.config = epi::get_value(storage, epi::APP_KEY).unwrap_or_default()
         }
 
-        if self.config.validate().is_ok() {
-            self.trigger_render();
+        if let Ok(input) = self.config.validate() {
+            self.trigger_render(input);
         }
     }
 
@@ -232,7 +232,7 @@ impl epi::App for TemplateApp {
                     ui.collapsing("Rendering options", |ui| {
                         ui.horizontal(|ui| {
                             ui.label("Image filename");
-                            ui.text_edit_singleline(&mut self.config.model_filename);
+                            path_edit_singleline(ui, &mut self.config.model);
                         });
                         ui.end_row();
 
@@ -263,20 +263,27 @@ impl epi::App for TemplateApp {
                     ui.checkbox(&mut self.config.auto_rerender, "Re-render on config change");
                     ui.end_row();
 
-                    if let Some(err_msg) = self.config.validate().err() {
-                        ui.colored_label(egui::Color32::RED, format!("Error: {}", err_msg));
-                    } else {
-                        if self.config.auto_rerender {
-                            if config_before != self.config {
-                                self.trigger_render();
-                            }
-                        } else {
-                            ui.vertical_centered_justified(|ui| {
-                                let button = egui::widgets::Button::new("Re-render image!");
-                                if ui.add(button).clicked() {
-                                    self.trigger_render();
+                    match self.config.validate() {
+                        Ok(input) => {
+                            if self.config.auto_rerender {
+                                if config_before != self.config {
+                                    println!("Configuration change detected - auto-rerendering!");
+                                    self.trigger_render(input);
                                 }
-                            });
+                            } else {
+                                ui.vertical_centered_justified(|ui| {
+                                    let button = egui::widgets::Button::new("Re-render image!");
+                                    if ui.add(button).clicked() {
+                                        self.trigger_render(input);
+                                    }
+                                });
+                            }
+                        }
+                        Err(err) => {
+                            ui.colored_label(
+                                egui::Color32::RED,
+                                format!("Error detected:\n{:?}", err),
+                            );
                         }
                     }
                     ui.end_row();
@@ -304,6 +311,12 @@ impl epi::App for TemplateApp {
             }
         });
     }
+}
+
+fn path_edit_singleline(ui: &mut egui::Ui, path_buf: &mut PathBuf) {
+    let mut temp = path_buf.to_string_lossy().to_string();
+    ui.text_edit_singleline(&mut temp);
+    *path_buf = PathBuf::from(temp);
 }
 
 fn vec3_editor(ui: &mut egui::Ui, label: &str, v: &mut Vec3) {

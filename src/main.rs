@@ -4,8 +4,11 @@
 mod scenes;
 mod ui;
 
+use std::path::{Path, PathBuf};
+
 use crate::scenes::{render_scene, RenderScene};
-use crab_tv::Canvas;
+use anyhow::{bail, Context, Result};
+use crab_tv::{Canvas, Model, ModelInput};
 use glam::Vec3;
 use rgb::RGB8;
 
@@ -15,7 +18,7 @@ pub struct RenderConfig {
     scene: RenderScene,
     width: usize,
     height: usize,
-    model_filename: String,
+    model: PathBuf,
     light_dir: Vec3,
     output_filename: String,
     display_actual_size: bool,
@@ -27,19 +30,28 @@ impl RenderConfig {
         self.width * self.height
     }
 
-    pub(crate) fn validate(&self) -> Result<(), String> {
+    pub(crate) fn validate(&self) -> Result<RenderInput> {
         if self.width < 200 {
-            return Err("Width must be 200 or greater".to_owned());
+            bail!("Width must be 200 or greater");
         } else if self.width > 5000 {
-            return Err("Width must be 5000 or less".to_owned());
+            bail!("Width must be 5000 or less");
         }
         if self.height < 200 {
-            return Err("Height must be 200 or greater".to_owned());
+            bail!("Height must be 200 or greater");
         } else if self.height > 5000 {
-            return Err("Height must be 5000 or less".to_owned());
+            bail!("Height must be 5000 or less");
         }
 
-        Ok(())
+        let model_input = Model::validate(&self.model)
+            .with_context(|| format!("Failed to load model from {}", self.model.display()))?;
+
+        Ok(RenderInput {
+            scene: self.scene,
+            width: self.width,
+            height: self.height,
+            model_input,
+            light_dir: self.light_dir,
+        })
     }
 }
 impl RenderConfig {
@@ -56,8 +68,8 @@ impl RenderConfig {
         self
     }
 
-    pub(crate) fn model_filename(&mut self, model_filename: String) -> &mut Self {
-        self.model_filename = model_filename;
+    pub(crate) fn model(&mut self, model: &Path) -> &mut Self {
+        self.model = model.to_owned();
         self
     }
     pub(crate) fn output_filename(&mut self, output_filename: String) -> &mut Self {
@@ -79,7 +91,7 @@ impl Default for RenderConfig {
             scene: RenderScene::iter().last().unwrap(),
             width: 400,
             height: 400,
-            model_filename: "models/african_head.obj".to_owned(),
+            model: PathBuf::from("assets/african_head"),
             light_dir: Vec3::new(0.0, 0.0, -1.0),
             output_filename: "target/output.png".to_owned(),
             display_actual_size: true,
@@ -88,8 +100,17 @@ impl Default for RenderConfig {
     }
 }
 
+#[derive(Clone, Debug)]
+pub struct RenderInput {
+    scene: RenderScene,
+    width: usize,
+    height: usize,
+    model_input: ModelInput,
+    light_dir: Vec3,
+}
+
 enum RenderCommand {
-    Render { config: RenderConfig },
+    Render { input: RenderInput },
 }
 
 enum RenderResult {
@@ -125,22 +146,20 @@ fn run_render_loop(
         match render_command_rx.recv() {
             Err(flume::RecvError::Disconnected) => break, // nothing to do, just quit quietly
 
-            Ok(RenderCommand::Render { config }) => {
+            Ok(RenderCommand::Render { input }) => {
                 render_result_tx
                     .send(RenderResult::Reset {
-                        image_height: config.height,
-                        image_width: config.width,
+                        image_height: input.height,
+                        image_width: input.width,
                     })
                     .ok()
                     .expect("sending Reset should succeed");
 
-                let mut image = Canvas::new(config.width, config.height);
-                render_scene(
-                    &mut image,
-                    &config.scene,
-                    &config.model_filename,
-                    config.light_dir,
-                );
+                let mut image = Canvas::new(input.width, input.height);
+
+                let model = Model::load_obj_file(&input.model_input).expect("Failed to load model");
+
+                render_scene(&mut image, &input.scene, &model, input.light_dir).unwrap();
 
                 render_result_tx
                     .send(RenderResult::FullImage {

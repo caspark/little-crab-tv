@@ -1,3 +1,4 @@
+use anyhow::Result;
 use glam::{IVec2, Vec3};
 
 use crab_tv::{Canvas, Model, BLUE, CYAN, GREEN, RED, WHITE};
@@ -29,9 +30,10 @@ pub enum RenderScene {
 pub fn render_scene(
     image: &mut Canvas,
     scene: &RenderScene,
-    model_filename: &str,
+    model: &Model,
     light_dir: Vec3,
-) {
+) -> Result<()> {
+    println!("Rendering scene: {}", scene);
     match scene {
         RenderScene::FivePixels => {
             // pixel in the middle
@@ -49,9 +51,6 @@ pub fn render_scene(
             image.line(IVec2::new(0, 0), IVec2::new(50, 50), GREEN);
         }
         RenderScene::ModelWireframe => {
-            println!("Loading model: {}", model_filename);
-            let model = Model::load_from_file(model_filename).expect("model filename should exist");
-
             image.model_wireframe(&model, WHITE);
         }
         RenderScene::TriangleLineSweepVerbose => {
@@ -91,45 +90,42 @@ pub fn render_scene(
             image.triangle_barycentric(&t2, GREEN);
         }
         RenderScene::ModelColoredTriangles => {
-            println!("Loading model: {}", model_filename);
-            let model = Model::load_from_file(model_filename).expect("model filename should exist");
-
             image.model_colored_triangles(&model);
         }
         RenderScene::ModelFlatShaded => {
-            println!("Loading model: {}", model_filename);
-            let model = Model::load_from_file(model_filename).expect("model filename should exist");
-
             image.model_flat_shaded(&model, light_dir, false);
         }
         RenderScene::ModelFlatShadedDepthTested => {
-            println!("Loading model: {}", model_filename);
-            let model = Model::load_from_file(model_filename).expect("model filename should exist");
-
             image.model_flat_shaded(&model, light_dir, true);
         }
     }
 
     image.flip_y();
+
+    Ok(())
 }
 
 #[cfg(test)]
 mod tests {
+    use std::path::Path;
+
     use strum::IntoEnumIterator;
 
     use super::*;
 
     #[test]
-    fn every_scene_should_render_without_errors() {
+    fn every_scene_should_render_without_errors() -> Result<()> {
         for scene in RenderScene::iter() {
             let mut image = Canvas::new(200, 200);
             println!("Rendering scene: {:?}", scene);
             render_scene(
                 &mut image,
                 &scene,
-                "models/african_head.obj",
+                &Model::load_obj_file(&Model::validate(Path::new("assets/african_head").as_ref())?)
+                    .expect("model load should succeed"),
                 Vec3::new(0.0, 0.0, -1.0),
-            );
+            )?;
         }
+        Ok(())
     }
 }
