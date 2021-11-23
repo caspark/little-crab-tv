@@ -3,6 +3,7 @@ use rgb::RGB8;
 
 use crate::{
     maths::{self, yolo_max, yolo_min},
+    model::Texture,
     Model,
 };
 
@@ -293,8 +294,10 @@ impl Canvas {
             let mut screen_coords_2d = [IVec2::ZERO; 3];
             let mut screen_coords_3d = [Vec3::ZERO; 3];
             let mut world_coords = [Vec3::ZERO; 3];
+            let mut texture_coords = [Vec2::ZERO; 3];
             for j in 0..3 {
                 let v = model.vertices[face.vertices[j]];
+                let raw_texture_coords = model.texture_coords[face.texture_coords[j]];
 
                 // this simplistic rendering code assumes that the vertice coordinates are
                 // between -1 and 1, so confirm that assumption
@@ -319,6 +322,10 @@ impl Canvas {
                     v.pos.z,
                 );
                 world_coords[j] = v.pos;
+                texture_coords[j] = Vec2::new(
+                    raw_texture_coords.x * model.diffuse_texture.width as f32,
+                    raw_texture_coords.y * model.diffuse_texture.height as f32,
+                );
             }
 
             let n = (world_coords[2] - world_coords[0]).cross(world_coords[1] - world_coords[0]);
@@ -326,13 +333,19 @@ impl Canvas {
             let intensity: f32 = n.dot(light_dir);
             if intensity > 0.0 {
                 let w = (intensity * 255.0) as u8;
-                if depth_tested {
-                    // Avoid overwriting pixels that are closer to the camera than the pixel being
-                    // rendered.
-                    self.triangle_barycentric_depth_tested(&screen_coords_3d, RGB8::new(w, w, w));
-                } else {
-                    self.triangle_barycentric(&screen_coords_2d, RGB8::new(w, w, w));
-                }
+                //FIXME only use texture rendering when it's requested
+                self.triangle_barycentric_texture(
+                    &screen_coords_3d,
+                    &model.diffuse_texture,
+                    &texture_coords,
+                );
+                // if depth_tested {
+                //     // Avoid overwriting pixels that are closer to the camera than the pixel being
+                //     // rendered.
+                //     self.triangle_barycentric_depth_tested(&screen_coords_3d, RGB8::new(w, w, w));
+                // } else {
+                //     self.triangle_barycentric(&screen_coords_2d, RGB8::new(w, w, w));
+                // }
             }
         }
     }
@@ -522,6 +535,47 @@ impl Canvas {
                 let z_buf_for_pixel = self.z_buffer_at(i, j);
                 if *z_buf_for_pixel < pixel_z {
                     *z_buf_for_pixel = pixel_z;
+                    *self.pixel(i, j) = color;
+                }
+            }
+        }
+    }
+
+    pub fn triangle_barycentric_texture(&mut self, pts: &[Vec3], tex: &Texture, tex_uvs: &[Vec2]) {
+        let mut bboxmin = Vec2::new((self.width - 1) as f32, (self.height - 1) as f32);
+        let mut bboxmax = Vec2::new(0.0, 0.0);
+        let clamp = Vec2::new((self.width - 1) as f32, (self.height - 1) as f32);
+
+        for i in 0..3 {
+            for j in 0..2 {
+                bboxmin[j] = yolo_max(0.0, yolo_min(bboxmin[j], pts[i][j]));
+                bboxmax[j] = yolo_min(clamp[j], yolo_max(bboxmax[j], pts[i][j]));
+            }
+        }
+
+        for i in (bboxmin.x as i32)..=(bboxmax.x as i32) {
+            for j in (bboxmin.y as i32)..=(bboxmax.y as i32) {
+                let p = Vec2::new(i as f32, j as f32);
+                let bc_screen = maths::barycentric_coords_3d(pts, p);
+                if bc_screen.x < 0.0 || bc_screen.y < 0.0 || bc_screen.z < 0.0 {
+                    continue;
+                }
+                let mut pixel_z = 0.0;
+                for k in 0..3 {
+                    pixel_z += pts[k][2] * bc_screen[k];
+                }
+                let z_buf_for_pixel = self.z_buffer_at(i, j);
+                if *z_buf_for_pixel < pixel_z {
+                    *z_buf_for_pixel = pixel_z;
+
+                    let uv = tex_uvs[0] * bc_screen[0]
+                        + tex_uvs[1] * bc_screen[1]
+                        + tex_uvs[2] * bc_screen[2];
+
+                    //FIXME triangle rendering is broken, same as https://github.com/ssloy/tinyrenderer/issues/74
+                    let color =
+                        tex.data[(uv.x as usize * tex.width + uv.y as usize) % tex.data.len()];
+
                     *self.pixel(i, j) = color;
                 }
             }
