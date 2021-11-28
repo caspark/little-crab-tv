@@ -8,5 +8,5 @@ mod model;
 
 pub use colors::*;
 
-pub use canvas::Canvas;
+pub use canvas::{Canvas, ModelShading};
 pub use model::{Face, Model, ModelInput, Vertex};

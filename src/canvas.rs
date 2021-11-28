@@ -7,6 +7,13 @@ use crate::{
     Model,
 };
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ModelShading {
+    FlatOnly,
+    DepthTested,
+    Textured,
+}
+
 #[derive(Clone, Debug)]
 pub struct Canvas {
     width: usize,
@@ -289,7 +296,7 @@ impl Canvas {
         }
     }
 
-    pub fn model_flat_shaded(&mut self, model: &Model, light_dir: Vec3, depth_tested: bool) {
+    pub fn model_shaded(&mut self, model: &Model, light_dir: Vec3, shading: ModelShading) {
         for face in model.faces.iter() {
             let mut screen_coords_2d = [IVec2::ZERO; 3];
             let mut screen_coords_3d = [Vec3::ZERO; 3];
@@ -334,20 +341,19 @@ impl Canvas {
             let intensity: f32 = n.dot(light_dir);
             if intensity > 0.0 {
                 let w = (intensity * 255.0) as u8;
-                //FIXME only use texture rendering when it's requested
-                self.triangle_barycentric_texture(
-                    &screen_coords_3d,
-                    &model.diffuse_texture,
-                    &texture_coords,
-                    intensity,
-                );
-                // if depth_tested {
-                //     // Avoid overwriting pixels that are closer to the camera than the pixel being
-                //     // rendered.
-                //     self.triangle_barycentric_depth_tested(&screen_coords_3d, RGB8::new(w, w, w));
-                // } else {
-                //     self.triangle_barycentric(&screen_coords_2d, RGB8::new(w, w, w));
-                // }
+                match shading {
+                    ModelShading::FlatOnly => {
+                        self.triangle_barycentric(&screen_coords_2d, RGB8::new(w, w, w))
+                    }
+                    ModelShading::DepthTested => self
+                        .triangle_barycentric_depth_tested(&screen_coords_3d, RGB8::new(w, w, w)),
+                    ModelShading::Textured => self.triangle_barycentric_texture(
+                        &screen_coords_3d,
+                        &model.diffuse_texture,
+                        &texture_coords,
+                        intensity,
+                    ),
+                }
             }
         }
     }

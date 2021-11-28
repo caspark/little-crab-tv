@@ -1,7 +1,7 @@
 use anyhow::Result;
 use glam::{IVec2, Vec3};
 
-use crab_tv::{Canvas, Model, BLUE, CYAN, GREEN, RED, WHITE};
+use crab_tv::{Canvas, Model, ModelShading, BLUE, CYAN, GREEN, RED, WHITE};
 
 #[derive(
     Copy,
@@ -24,7 +24,8 @@ pub enum RenderScene {
     TriangleBarycentric,
     ModelColoredTriangles,
     ModelFlatShaded,
-    ModelFlatShadedDepthTested,
+    ModelDepthTested,
+    ModelTextured,
 }
 
 pub fn render_scene(
@@ -93,11 +94,12 @@ pub fn render_scene(
             image.model_colored_triangles(&model);
         }
         RenderScene::ModelFlatShaded => {
-            image.model_flat_shaded(&model, light_dir, false);
+            image.model_shaded(&model, light_dir, ModelShading::FlatOnly);
         }
-        RenderScene::ModelFlatShadedDepthTested => {
-            image.model_flat_shaded(&model, light_dir, true);
+        RenderScene::ModelDepthTested => {
+            image.model_shaded(&model, light_dir, ModelShading::DepthTested);
         }
+        RenderScene::ModelTextured => image.model_shaded(&model, light_dir, ModelShading::Textured),
     }
 
     image.flip_y();
