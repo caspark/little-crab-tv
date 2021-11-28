@@ -226,8 +226,8 @@ impl Canvas {
     pub fn model_wireframe(&mut self, model: &Model, color: RGB8) {
         for face in model.faces.iter() {
             for j in 0..3 {
-                let v0 = model.vertices[face.vertices[j]];
-                let v1 = model.vertices[face.vertices[(j + 1) % 3]];
+                let v0 = model.vertices[face.points[j].vertices_index];
+                let v1 = model.vertices[face.points[(j + 1) % 3].vertices_index];
 
                 // this simplistic rendering code assumes that the vertice coordinates are
                 // between -1 and 1, so confirm that assumption
@@ -265,7 +265,7 @@ impl Canvas {
         for face in model.faces.iter() {
             let mut screen_coords = [IVec2::new(0, 0); 3];
             for j in 0..3 {
-                let v = model.vertices[face.vertices[j]];
+                let v = model.vertices[face.points[j].vertices_index];
 
                 // this simplistic rendering code assumes that the vertice coordinates are
                 // between -1 and 1, so confirm that assumption
@@ -296,8 +296,7 @@ impl Canvas {
             let mut world_coords = [Vec3::ZERO; 3];
             let mut texture_coords = [Vec2::ZERO; 3];
             for j in 0..3 {
-                let v = model.vertices[face.vertices[j]];
-                let raw_texture_coords = model.texture_coords[face.texture_coords[j]];
+                let v = model.vertices[face.points[j].vertices_index];
 
                 // this simplistic rendering code assumes that the vertice coordinates are
                 // between -1 and 1, so confirm that assumption
@@ -322,6 +321,8 @@ impl Canvas {
                     v.pos.z,
                 );
                 world_coords[j] = v.pos;
+
+                let raw_texture_coords = model.texture_coords[face.points[j].uv_index];
                 texture_coords[j] = Vec2::new(
                     raw_texture_coords.x * model.diffuse_texture.width as f32,
                     raw_texture_coords.y * model.diffuse_texture.height as f32,
@@ -541,7 +542,12 @@ impl Canvas {
         }
     }
 
-    pub fn triangle_barycentric_texture(&mut self, pts: &[Vec3], tex: &Texture, tex_uvs: &[Vec2]) {
+    pub fn triangle_barycentric_texture(
+        &mut self,
+        pts: &[Vec3],
+        tex: &Texture,
+        varying_uv: &[Vec2],
+    ) {
         let mut bboxmin = Vec2::new((self.width - 1) as f32, (self.height - 1) as f32);
         let mut bboxmax = Vec2::new(0.0, 0.0);
         let clamp = Vec2::new((self.width - 1) as f32, (self.height - 1) as f32);
@@ -568,13 +574,11 @@ impl Canvas {
                 if *z_buf_for_pixel < pixel_z {
                     *z_buf_for_pixel = pixel_z;
 
-                    let uv = tex_uvs[0] * bc_screen[0]
-                        + tex_uvs[1] * bc_screen[1]
-                        + tex_uvs[2] * bc_screen[2];
+                    let uv = varying_uv[0] * bc_screen[0]
+                        + varying_uv[1] * bc_screen[1]
+                        + varying_uv[2] * bc_screen[2];
 
-                    //FIXME triangle rendering is broken, same as https://github.com/ssloy/tinyrenderer/issues/74
-                    let color =
-                        tex.data[(uv.x as usize * tex.width + uv.y as usize) % tex.data.len()];
+                    let color = tex.data[(tex.height - uv.y as usize) * tex.width + uv.x as usize];
 
                     *self.pixel(i, j) = color;
                 }

@@ -2,7 +2,7 @@ use std::path::{Path, PathBuf};
 
 use anyhow::{anyhow, bail, Context, Result};
 use derive_more::Constructor;
-use glam::Vec3;
+use glam::{Vec2, Vec3};
 use rgb::RGB8;
 
 #[derive(Clone, Copy, Debug, PartialEq, Constructor)]
@@ -11,9 +11,14 @@ pub struct Vertex {
 }
 
 #[derive(Clone, Debug, Constructor)]
+pub struct FacePoint {
+    pub vertices_index: usize,
+    pub uv_index: usize,
+}
+
+#[derive(Clone, Debug, Constructor)]
 pub struct Face {
-    pub vertices: Vec<usize>,
-    pub texture_coords: Vec<usize>,
+    pub points: Vec<FacePoint>,
 }
 
 type TextureInput = PathBuf;
@@ -63,7 +68,7 @@ impl ModelInput {}
 pub struct Model {
     pub vertices: Vec<Vertex>,
     pub faces: Vec<Face>,
-    pub texture_coords: Vec<Vec3>,
+    pub texture_coords: Vec<Vec2>,
     pub diffuse_texture: Texture,
 }
 
@@ -127,34 +132,33 @@ impl Model {
                 }
                 "f" => {
                     // face, eg: f 1193/1240/1193 1180/1227/1180 1179/1226/1179
-                    let mut vertex_indexes = Vec::new();
-                    let mut texture_indexes = Vec::new();
-                    let mut face_vertex_count = 0;
+                    let mut vertices = Vec::new();
                     for vertex in parts {
                         let mut vertex_parts = vertex.split('/');
-                        let vertex_index = vertex_parts.next().unwrap().parse::<i32>().unwrap();
-                        let texture_index = vertex_parts.next().unwrap().parse::<i32>().unwrap();
+                        let vertices_index = vertex_parts.next().unwrap().parse::<i32>().unwrap();
+                        let uvs_index = vertex_parts.next().unwrap().parse::<i32>().unwrap();
                         // vertex indices should be 1-based & we ignore negative indices even though
                         // officially they are allowed
                         assert!(
-                            vertex_index > 0,
+                            vertices_index > 0,
                             "Only positive 1-based indexing is supported for faces vertex indexing"
                         );
                         assert!(
-                            texture_index > 0,
+                            uvs_index > 0,
                             "Only positive 1-based indexing is supported for face texture coordinate indexing"
                         );
-                        vertex_indexes.push((vertex_index - 1) as usize);
-                        texture_indexes.push((vertex_index - 1) as usize);
 
-                        face_vertex_count += 1;
+                        vertices.push(FacePoint::new(
+                            vertices_index as usize - 1,
+                            uvs_index as usize - 1,
+                        ));
                     }
                     debug_assert!(
-                        face_vertex_count == 3,
+                        vertices.len() == 3,
                         "only faces with exactly 3 vertices are supported; found {} vertices",
-                        face_vertex_count
+                        vertices.len()
                     );
-                    faces.push(Face::new(vertex_indexes, texture_indexes));
+                    faces.push(Face::new(vertices));
                 }
                 "vt" => {
                     // triangle texture coordinates, eg: vt  0.532 0.923 0.000
@@ -167,8 +171,7 @@ impl Model {
                     };
                     let x = extract_float();
                     let y = extract_float();
-                    let z = extract_float();
-                    texture_coords.push(Vec3::new(x, y, z));
+                    texture_coords.push(Vec2::new(x, y));
                 }
                 _ => (), // ignore unknown line type
             }
