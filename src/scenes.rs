@@ -123,8 +123,10 @@ mod tests {
             render_scene(
                 &mut image,
                 &scene,
-                &Model::load_obj_file(&Model::validate(Path::new("assets/african_head").as_ref())?)
-                    .expect("model load should succeed"),
+                &Model::load_obj_file(&Model::validate(
+                    Path::new("assets/african_head.obj").as_ref(),
+                )?)
+                .expect("model load should succeed"),
                 Vec3::new(0.0, 0.0, -1.0),
             )?;
         }

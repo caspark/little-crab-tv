@@ -91,7 +91,7 @@ impl Default for RenderConfig {
             scene: RenderScene::iter().last().unwrap(),
             width: 400,
             height: 400,
-            model: PathBuf::from("assets/african_head"),
+            model: PathBuf::from("assets/african_head.obj"),
             light_dir: Vec3::new(0.0, 0.0, -1.0),
             output_filename: "target/output.png".to_owned(),
             display_actual_size: true,
