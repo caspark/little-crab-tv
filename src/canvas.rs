@@ -1,5 +1,5 @@
 use glam::{IVec2, Vec2, Vec3};
-use rgb::RGB8;
+use rgb::{ComponentMap, RGB8};
 
 use crate::{
     maths::{self, yolo_max, yolo_min},
@@ -339,6 +339,7 @@ impl Canvas {
                     &screen_coords_3d,
                     &model.diffuse_texture,
                     &texture_coords,
+                    intensity,
                 );
                 // if depth_tested {
                 //     // Avoid overwriting pixels that are closer to the camera than the pixel being
@@ -547,6 +548,7 @@ impl Canvas {
         pts: &[Vec3],
         tex: &Texture,
         varying_uv: &[Vec2],
+        light_intensity: f32,
     ) {
         let mut bboxmin = Vec2::new((self.width - 1) as f32, (self.height - 1) as f32);
         let mut bboxmax = Vec2::new(0.0, 0.0);
@@ -578,7 +580,8 @@ impl Canvas {
                         + varying_uv[1] * bc_screen[1]
                         + varying_uv[2] * bc_screen[2];
 
-                    let color = tex.data[(tex.height - uv.y as usize) * tex.width + uv.x as usize];
+                    let color = tex.data[(tex.height - uv.y as usize) * tex.width + uv.x as usize]
+                        .map(|comp| (comp as f32 * light_intensity) as u8);
 
                     *self.pixel(i, j) = color;
                 }
