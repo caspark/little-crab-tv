@@ -174,8 +174,6 @@ impl epi::App for TemplateApp {
                         .expect("ui data must be present for storing pixels");
 
                     data.store_image(pixels.as_slice(), frame.tex_allocator());
-
-                    data.save_output_to_file(self.config.output_filename.as_ref());
                 }
                 Err(flume::TryRecvError::Empty) => break,
                 Err(flume::TryRecvError::Disconnected) => {
@@ -216,20 +214,14 @@ impl epi::App for TemplateApp {
                     });
                     ui.end_row();
 
-                    ui.horizontal(|ui| {
-                        ui.label("Save as");
-                        ui.text_edit_singleline(&mut self.config.output_filename);
-                    });
-                    ui.end_row();
-
-                    ui.collapsing("Graphical display options", |ui| {
+                    ui.collapsing("Display options", |ui| {
                         ui.checkbox(
                             &mut self.config.display_actual_size,
                             "Display render at actual 1:1 size",
                         );
                     });
 
-                    ui.collapsing("Rendering options", |ui| {
+                    ui.collapsing("Render options", |ui| {
                         ui.horizontal(|ui| {
                             ui.label("Image filename");
                             path_edit_singleline(ui, &mut self.config.model);
@@ -257,6 +249,20 @@ impl epi::App for TemplateApp {
                             // this will cause a render loop for certain floating point values
                             self.config.light_dir = self.config.light_dir.normalize_or_zero();
                         }
+                        ui.end_row();
+                    });
+
+                    ui.collapsing("Save render", |ui| {
+                        ui.horizontal(|ui| {
+                            ui.label("Path");
+                            ui.text_edit_singleline(&mut self.config.output_filename);
+                            if let Some(ref data) = self.data {
+                                let button = egui::widgets::Button::new("Save");
+                                if ui.add(button).clicked() {
+                                    data.save_output_to_file(self.config.output_filename.as_ref());
+                                }
+                            }
+                        });
                         ui.end_row();
                     });
 
