@@ -328,11 +328,6 @@ impl Canvas {
                     ((v.pos.x + 1.0) * (self.width as f32 - 1.0) / 2.0) as i32,
                     ((v.pos.y + 1.0) * (self.height as f32 - 1.0) / 2.0) as i32,
                 );
-                screen_coords_3d[j] = Vec3::new(
-                    (v.pos.x + 1.0) * (self.width as f32 - 1.0) / 2.0,
-                    (v.pos.y + 1.0) * (self.height as f32 - 1.0) / 2.0,
-                    v.pos.z,
-                );
 
                 world_coords[j] = v.pos;
 
@@ -340,28 +335,53 @@ impl Canvas {
                     let debug = face_num < 5 && j == 0;
 
                     if debug {
-                        dbg!(screen_coords_3d[0]);
+                        dbg!(v.pos);
                     }
 
                     // step 1 - embed into 4D space by converting to homogeneous coordinates
-                    let mut vec4: Vec4 = (screen_coords_3d[j], 1.0).into();
+                    let mut vec4: Vec4 = (v.pos, 1.0).into();
+                    if debug {
+                        dbg!("homo", vec4);
+                    }
+
+                    // magical screen matrix
+                    let width = 800.0;
+                    let height = 800.0;
+                    let viewport = viewport_transform(
+                        width / 8.0,
+                        height / 8.0,
+                        width * 3.0 / 4.0,
+                        height * 3.0 / 4.0,
+                    )
+                    .transpose();
+                    if debug {
+                        dbg!(viewport);
+                    }
+
                     // step 2 - multiply with projection matrix
                     let projection_matrix: Mat4 = Mat4::from_cols(
                         [1.0, 0.0, 0.0, 0.0].into(),
                         [0.0, 1.0, 0.0, 0.0].into(),
-                        [0.0, 0.0, 1.0, 0.0].into(),
-                        [0.0, 0.0, -1.0 / camera_dist, 1.0].into(),
+                        [0.0, 0.0, 1.0, -1.0 / camera_dist].into(),
+                        [0.0, 0.0, 0.0, 1.0].into(),
                     );
                     if debug {
                         dbg!(projection_matrix);
                     }
-                    vec4 = projection_matrix * vec4;
+
+                    let viewport_projection = viewport * projection_matrix;
                     if debug {
-                        dbg!(vec4);
+                        dbg!("viewport_projection2", viewport_projection);
+                    }
+
+                    vec4 = viewport_projection * vec4;
+                    if debug {
+                        // dbg!(viewport);
+                        // dbg!(vec4);
                     }
                     // step 3 - divide by w to reproject into 3d screen coordinates
-                    vec4 = vec4 / vec4.w;
-                    screen_coords_3d[j] = Vec3::new(vec4.x, vec4.y, vec4.z);
+                    screen_coords_3d[j] =
+                        Vec3::new(vec4.x / vec4.w, vec4.y / vec4.w, vec4.z / vec4.w);
 
                     if debug {
                         dbg!(screen_coords_3d[j]);
@@ -371,6 +391,13 @@ impl Canvas {
                     //     Mat4::perspective_lh(std::f32::consts::PI / 2.0, 1.0, 1.0, 5.0);
                     // screen_coords_3d[j] = projection.transform_point3(screen_coords_3d[j]);
                     // world_coords[j] = projection.transform_point3(world_coords[j]);
+                } else {
+                    // not doing perspective correction
+                    screen_coords_3d[j] = Vec3::new(
+                        (v.pos.x + 1.0) * (self.width as f32 - 1.0) / 2.0,
+                        (v.pos.y + 1.0) * (self.height as f32 - 1.0) / 2.0,
+                        v.pos.z,
+                    );
                 }
 
                 let raw_texture_coords = model.texture_coords[face.points[j].uv_index];
@@ -642,4 +669,21 @@ impl Canvas {
     pub fn triangle(&mut self, pts: &[Vec3], color: RGB8) {
         self.triangle_barycentric_depth_tested(pts, color);
     }
+}
+
+fn viewport_transform(x: f32, y: f32, w: f32, h: f32) -> Mat4 {
+    let depth = 255.0;
+    // Mat4::from_cols(
+    //     [w / 2.0, 0.0, 0.0, x + w / 2.0].into(),
+    //     [0.0, h / 2.0, 0.0, y + h / 2.0].into(),
+    //     [0.0, 0.0, depth / 2.0, depth / 2.0].into(),
+    //     [0.0, 0.0, 0.0, 1.0].into(),
+    // )
+
+    Mat4::from_cols(
+        [300.0, 0.0, 0.0, 400.0].into(),
+        [0.0, 300.0, 0.0, 400.0].into(),
+        [0.0, 0.0, 127.5, 127.5].into(),
+        [0.0, 0.0, 0.0, 1.0].into(),
+    )
 }
