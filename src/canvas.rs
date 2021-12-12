@@ -350,7 +350,7 @@ impl Canvas {
                         [1.0, 0.0, 0.0, 0.0].into(),
                         [0.0, 1.0, 0.0, 0.0].into(),
                         [0.0, 0.0, 1.0, 0.0].into(),
-                        [0.0, 0.0, 0.0, 1.0].into(),
+                        [0.0, 0.0, -1.0 / camera_dist, 1.0].into(),
                     );
                     if debug {
                         dbg!(projection_matrix);
