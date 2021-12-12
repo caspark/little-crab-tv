@@ -314,24 +314,21 @@ impl Canvas {
                 )
             }
 
-            // TODO make width & height parameterized
-            let width = 800.0;
-            let height = 800.0;
             // viewport matrix resizes/repositions the result to fit on screen
             let viewport = viewport_transform(
-                width / 8.0,
-                height / 8.0,
-                width * 3.0 / 4.0,
-                height * 3.0 / 4.0,
+                self.width() as f32 / 8.0,
+                self.height() as f32 / 8.0,
+                self.width() as f32 * 3.0 / 4.0,
+                self.height() as f32 * 3.0 / 4.0,
             );
             // projection matrix applies perspective correction
-            let projection_matrix: Mat4 = Mat4::from_cols(
+            let projection: Mat4 = Mat4::from_cols(
                 [1.0, 0.0, 0.0, 0.0].into(),
                 [0.0, 1.0, 0.0, 0.0].into(),
                 [0.0, 0.0, 1.0, -1.0 / camera_dist].into(),
                 [0.0, 0.0, 0.0, 1.0].into(),
             );
-            viewport * projection_matrix
+            viewport * projection
         });
 
         for face in model.faces.iter() {
