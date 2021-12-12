@@ -303,7 +303,38 @@ impl Canvas {
         shading: ModelShading,
         camera_dist: Option<f32>,
     ) {
-        for (face_num, face) in model.faces.iter().enumerate() {
+        let perspective_correction = camera_dist.map(|camera_dist| {
+            fn viewport_transform(x: f32, y: f32, w: f32, h: f32) -> Mat4 {
+                let depth = 255.0;
+                Mat4::from_cols(
+                    [w / 2.0, 0.0, 0.0, 0.0].into(),
+                    [0.0, h / 2.0, 0.0, 0.0].into(),
+                    [0.0, 0.0, depth / 2.0, 0.0].into(),
+                    [x + w / 2.0, y + h / 2.0, depth / 2.0, 1.0].into(),
+                )
+            }
+
+            // TODO make width & height parameterized
+            let width = 800.0;
+            let height = 800.0;
+            // viewport matrix resizes/repositions the result to fit on screen
+            let viewport = viewport_transform(
+                width / 8.0,
+                height / 8.0,
+                width * 3.0 / 4.0,
+                height * 3.0 / 4.0,
+            );
+            // projection matrix applies perspective correction
+            let projection_matrix: Mat4 = Mat4::from_cols(
+                [1.0, 0.0, 0.0, 0.0].into(),
+                [0.0, 1.0, 0.0, 0.0].into(),
+                [0.0, 0.0, 1.0, -1.0 / camera_dist].into(),
+                [0.0, 0.0, 0.0, 1.0].into(),
+            );
+            viewport * projection_matrix
+        });
+
+        for face in model.faces.iter() {
             let mut screen_coords_2d = [IVec2::ZERO; 3];
             let mut screen_coords_3d = [Vec3::ZERO; 3];
             let mut world_coords = [Vec3::ZERO; 3];
@@ -331,66 +362,14 @@ impl Canvas {
 
                 world_coords[j] = v.pos;
 
-                if let Some(camera_dist) = camera_dist {
-                    let debug = face_num < 5 && j == 0;
-
-                    if debug {
-                        dbg!(v.pos);
-                    }
-
+                if let Some(perspective_correction) = perspective_correction {
                     // step 1 - embed into 4D space by converting to homogeneous coordinates
                     let mut vec4: Vec4 = (v.pos, 1.0).into();
-                    if debug {
-                        dbg!("homo", vec4);
-                    }
-
-                    // magical screen matrix
-                    let width = 800.0;
-                    let height = 800.0;
-                    let viewport = viewport_transform(
-                        width / 8.0,
-                        height / 8.0,
-                        width * 3.0 / 4.0,
-                        height * 3.0 / 4.0,
-                    )
-                    .transpose();
-                    if debug {
-                        dbg!(viewport);
-                    }
-
-                    // step 2 - multiply with projection matrix
-                    let projection_matrix: Mat4 = Mat4::from_cols(
-                        [1.0, 0.0, 0.0, 0.0].into(),
-                        [0.0, 1.0, 0.0, 0.0].into(),
-                        [0.0, 0.0, 1.0, -1.0 / camera_dist].into(),
-                        [0.0, 0.0, 0.0, 1.0].into(),
-                    );
-                    if debug {
-                        dbg!(projection_matrix);
-                    }
-
-                    let viewport_projection = viewport * projection_matrix;
-                    if debug {
-                        dbg!("viewport_projection2", viewport_projection);
-                    }
-
-                    vec4 = viewport_projection * vec4;
-                    if debug {
-                        // dbg!(viewport);
-                        // dbg!(vec4);
-                    }
+                    // step 2 - multiply with projection & viewport matrices to correct perspective
+                    vec4 = perspective_correction * vec4;
                     // step 3 - divide by w to reproject into 3d screen coordinates
                     screen_coords_3d[j] =
                         Vec3::new(vec4.x / vec4.w, vec4.y / vec4.w, vec4.z / vec4.w);
-
-                    if debug {
-                        dbg!(screen_coords_3d[j]);
-                    }
-
-                    // let projection =
-                    //     Mat4::perspective_lh(std::f32::consts::PI / 2.0, 1.0, 1.0, 5.0);
-                    // screen_coords_3d[j] = projection.transform_point3(screen_coords_3d[j]);
-                    // world_coords[j] = projection.transform_point3(world_coords[j]);
                 } else {
                     // not doing perspective correction
                     screen_coords_3d[j] = Vec3::new(
@@ -669,21 +648,4 @@ impl Canvas {
     pub fn triangle(&mut self, pts: &[Vec3], color: RGB8) {
         self.triangle_barycentric_depth_tested(pts, color);
     }
-}
-
-fn viewport_transform(x: f32, y: f32, w: f32, h: f32) -> Mat4 {
-    let depth = 255.0;
-    // Mat4::from_cols(
-    //     [w / 2.0, 0.0, 0.0, x + w / 2.0].into(),
-    //     [0.0, h / 2.0, 0.0, y + h / 2.0].into(),
-    //     [0.0, 0.0, depth / 2.0, depth / 2.0].into(),
-    //     [0.0, 0.0, 0.0, 1.0].into(),
-    // )
-
-    Mat4::from_cols(
-        [300.0, 0.0, 0.0, 400.0].into(),
-        [0.0, 300.0, 0.0, 400.0].into(),
-        [0.0, 0.0, 127.5, 127.5].into(),
-        [0.0, 0.0, 0.0, 1.0].into(),
-    )
 }
