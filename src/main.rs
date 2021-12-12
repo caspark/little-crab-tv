@@ -6,11 +6,10 @@ mod ui;
 
 use std::path::{Path, PathBuf};
 
-use crate::scenes::{render_scene, RenderScene};
+use crate::scenes::RenderScene;
 use anyhow::{bail, Context, Result};
-use crab_tv::{Canvas, Model, ModelInput};
+use crab_tv::{Model, ModelInput};
 use glam::Vec3;
-use rgb::RGB8;
 
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize, PartialEq)]
 #[serde(default)] // if we add new fields, give them default values when deserializing old state
@@ -109,65 +108,8 @@ pub struct RenderInput {
     light_dir: Vec3,
 }
 
-enum RenderCommand {
-    Render { input: RenderInput },
-}
-
-enum RenderResult {
-    Reset {
-        image_width: usize,
-        image_height: usize,
-    },
-    FullImage {
-        pixels: Vec<RGB8>,
-    },
-}
-
 fn main() {
-    let (command_tx, command_rx) = flume::unbounded::<RenderCommand>();
-    let (result_tx, result_rx) = flume::unbounded::<RenderResult>();
-
-    // start a background thread to handle rendering, but drop its handle so we don't wait for it
-    // to finish
-    drop(std::thread::spawn(move || {
-        run_render_loop(command_rx, result_tx);
-    }));
-
-    let app = ui::TemplateApp::new(command_tx, result_rx);
+    let app = ui::RendererApp::new();
     let native_options = eframe::NativeOptions::default();
     eframe::run_native(Box::new(app), native_options);
-}
-
-fn run_render_loop(
-    render_command_rx: flume::Receiver<RenderCommand>,
-    render_result_tx: flume::Sender<RenderResult>,
-) {
-    loop {
-        match render_command_rx.recv() {
-            Err(flume::RecvError::Disconnected) => break, // nothing to do, just quit quietly
-
-            Ok(RenderCommand::Render { input }) => {
-                render_result_tx
-                    .send(RenderResult::Reset {
-                        image_height: input.height,
-                        image_width: input.width,
-                    })
-                    .ok()
-                    .expect("sending Reset should succeed");
-
-                let mut image = Canvas::new(input.width, input.height);
-
-                let model = Model::load_obj_file(&input.model_input).expect("Failed to load model");
-
-                render_scene(&mut image, &input.scene, &model, input.light_dir).unwrap();
-
-                render_result_tx
-                    .send(RenderResult::FullImage {
-                        pixels: image.into_pixels(),
-                    })
-                    .ok()
-                    .expect("Sending final image shoud succeed");
-            }
-        }
-    }
 }

@@ -1,5 +1,6 @@
 use std::path::PathBuf;
 
+use crab_tv::{Canvas, Model};
 use eframe::{
     egui::{self, TextureId},
     epi,
@@ -8,7 +9,7 @@ use glam::Vec3;
 use rgb::RGB8;
 use strum::IntoEnumIterator;
 
-use crate::{RenderCommand, RenderConfig, RenderInput, RenderResult, RenderScene};
+use crate::{RenderConfig, RenderInput, RenderScene};
 
 #[derive(Debug, Default)]
 struct UiData {
@@ -87,28 +88,24 @@ impl UiData {
 }
 
 #[derive(Debug)]
-pub struct TemplateApp {
+pub struct RendererApp {
     config: RenderConfig,
     data: Option<UiData>,
-
-    render_command_tx: flume::Sender<RenderCommand>,
-    render_result_rx: flume::Receiver<RenderResult>,
 }
 
-impl TemplateApp {
-    pub(crate) fn new(
-        render_command_tx: flume::Sender<RenderCommand>,
-        render_result_rx: flume::Receiver<RenderResult>,
-    ) -> Self {
-        TemplateApp {
+impl RendererApp {
+    pub(crate) fn new() -> Self {
+        RendererApp {
             config: Default::default(),
             data: Default::default(),
-            render_command_tx,
-            render_result_rx,
         }
     }
 
-    fn trigger_render(&self, input: RenderInput) {
+    fn trigger_render(
+        &mut self,
+        input: RenderInput,
+        tex_allocator: &mut dyn eframe::epi::TextureAllocator,
+    ) {
         println!(
             "Triggering render of {width}x{height} image (total {count} pixels)",
             width = self.config.width,
@@ -116,14 +113,28 @@ impl TemplateApp {
             count = self.config.image_pixel_count(),
         );
 
-        self.render_command_tx
-            .send(RenderCommand::Render { input })
-            .ok()
-            .expect("render command send should succeed");
+        // reset UI state
+        if let Some(ref mut d) = self.data {
+            d.clear_texture(tex_allocator);
+        }
+        self.data = Some(UiData::new(self.config.width, self.config.height));
+
+        // render new image
+        let mut image = Canvas::new(input.width, input.height);
+        let model = Model::load_obj_file(&input.model_input).expect("Failed to load model");
+
+        crate::scenes::render_scene(&mut image, &input.scene, &model, input.light_dir).unwrap();
+
+        let data = self
+            .data
+            .as_mut()
+            .expect("ui data must be present for storing pixels");
+
+        data.store_image(image.into_pixels().as_slice(), tex_allocator);
     }
 }
 
-impl epi::App for TemplateApp {
+impl epi::App for RendererApp {
     fn name(&self) -> &str {
         "Crab TV"
     }
@@ -132,7 +143,7 @@ impl epi::App for TemplateApp {
     fn setup(
         &mut self,
         _ctx: &egui::CtxRef,
-        _frame: &mut epi::Frame<'_>,
+        frame: &mut epi::Frame<'_>,
         _storage: Option<&dyn epi::Storage>,
     ) {
         // Load previous app state (if any).
@@ -141,7 +152,7 @@ impl epi::App for TemplateApp {
         }
 
         if let Ok(input) = self.config.validate() {
-            self.trigger_render(input);
+            self.trigger_render(input, frame.tex_allocator());
         }
     }
 
@@ -153,35 +164,6 @@ impl epi::App for TemplateApp {
     /// Called each time the UI needs repainting, which may be many times per second.
     /// Put your widgets into a `SidePanel`, `TopPanel`, `CentralPanel`, `Window` or `Area`.
     fn update(&mut self, ctx: &egui::CtxRef, frame: &mut epi::Frame<'_>) {
-        loop {
-            match self.render_result_rx.try_recv() {
-                Ok(RenderResult::Reset {
-                    image_height,
-                    image_width,
-                }) => {
-                    assert!(image_width > 0);
-                    assert!(image_height > 0);
-
-                    if let Some(ref mut d) = self.data {
-                        d.clear_texture(frame.tex_allocator());
-                    }
-                    self.data = Some(UiData::new(image_width, image_height));
-                }
-                Ok(RenderResult::FullImage { pixels }) => {
-                    let data = self
-                        .data
-                        .as_mut()
-                        .expect("ui data must be present for storing pixels");
-
-                    data.store_image(pixels.as_slice(), frame.tex_allocator());
-                }
-                Err(flume::TryRecvError::Empty) => break,
-                Err(flume::TryRecvError::Disconnected) => {
-                    panic!("Rendering thread seems to have exited before UI!")
-                }
-            };
-        }
-
         egui::SidePanel::left("config_panel")
             // .resizable(false)
             .show(ctx, |ui| {
@@ -274,13 +256,13 @@ impl epi::App for TemplateApp {
                             if self.config.auto_rerender {
                                 if config_before != self.config {
                                     println!("Configuration change detected - auto-rerendering!");
-                                    self.trigger_render(input);
+                                    self.trigger_render(input, frame.tex_allocator());
                                 }
                             } else {
                                 ui.vertical_centered_justified(|ui| {
                                     let button = egui::widgets::Button::new("Re-render image!");
                                     if ui.add(button).clicked() {
-                                        self.trigger_render(input);
+                                        self.trigger_render(input, frame.tex_allocator());
                                     }
                                 });
                             }
