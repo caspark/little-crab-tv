@@ -1,4 +1,4 @@
-use glam::{IVec2, Vec2, Vec3};
+use glam::{IVec2, Mat4, Vec2, Vec3, Vec4};
 use rgb::{ComponentMap, RGB8};
 
 use crate::{
@@ -296,8 +296,14 @@ impl Canvas {
         }
     }
 
-    pub fn model_shaded(&mut self, model: &Model, light_dir: Vec3, shading: ModelShading) {
-        for face in model.faces.iter() {
+    pub fn model_shaded(
+        &mut self,
+        model: &Model,
+        light_dir: Vec3,
+        shading: ModelShading,
+        camera_dist: Option<f32>,
+    ) {
+        for (face_num, face) in model.faces.iter().enumerate() {
             let mut screen_coords_2d = [IVec2::ZERO; 3];
             let mut screen_coords_3d = [Vec3::ZERO; 3];
             let mut world_coords = [Vec3::ZERO; 3];
@@ -327,7 +333,45 @@ impl Canvas {
                     (v.pos.y + 1.0) * (self.height as f32 - 1.0) / 2.0,
                     v.pos.z,
                 );
+
                 world_coords[j] = v.pos;
+
+                if let Some(camera_dist) = camera_dist {
+                    let debug = face_num < 5 && j == 0;
+
+                    if debug {
+                        dbg!(screen_coords_3d[0]);
+                    }
+
+                    // step 1 - embed into 4D space by converting to homogeneous coordinates
+                    let mut vec4: Vec4 = (screen_coords_3d[j], 1.0).into();
+                    // step 2 - multiply with projection matrix
+                    let projection_matrix: Mat4 = Mat4::from_cols(
+                        [1.0, 0.0, 0.0, 0.0].into(),
+                        [0.0, 1.0, 0.0, 0.0].into(),
+                        [0.0, 0.0, 1.0, 0.0].into(),
+                        [0.0, 0.0, 0.0, 1.0].into(),
+                    );
+                    if debug {
+                        dbg!(projection_matrix);
+                    }
+                    vec4 = projection_matrix * vec4;
+                    if debug {
+                        dbg!(vec4);
+                    }
+                    // step 3 - divide by w to reproject into 3d screen coordinates
+                    vec4 = vec4 / vec4.w;
+                    screen_coords_3d[j] = Vec3::new(vec4.x, vec4.y, vec4.z);
+
+                    if debug {
+                        dbg!(screen_coords_3d[j]);
+                    }
+
+                    // let projection =
+                    //     Mat4::perspective_lh(std::f32::consts::PI / 2.0, 1.0, 1.0, 5.0);
+                    // screen_coords_3d[j] = projection.transform_point3(screen_coords_3d[j]);
+                    // world_coords[j] = projection.transform_point3(world_coords[j]);
+                }
 
                 let raw_texture_coords = model.texture_coords[face.points[j].uv_index];
                 texture_coords[j] = Vec2::new(

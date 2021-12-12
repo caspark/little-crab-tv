@@ -26,6 +26,7 @@ pub enum RenderScene {
     ModelFlatShaded,
     ModelDepthTested,
     ModelTextured,
+    ModelPerspective,
 }
 
 pub fn render_scene(
@@ -94,12 +95,17 @@ pub fn render_scene(
             image.model_colored_triangles(&model);
         }
         RenderScene::ModelFlatShaded => {
-            image.model_shaded(&model, light_dir, ModelShading::FlatOnly);
+            image.model_shaded(&model, light_dir, ModelShading::FlatOnly, None);
         }
         RenderScene::ModelDepthTested => {
-            image.model_shaded(&model, light_dir, ModelShading::DepthTested);
+            image.model_shaded(&model, light_dir, ModelShading::DepthTested, None);
         }
-        RenderScene::ModelTextured => image.model_shaded(&model, light_dir, ModelShading::Textured),
+        RenderScene::ModelTextured => {
+            image.model_shaded(&model, light_dir, ModelShading::Textured, None)
+        }
+        RenderScene::ModelPerspective => {
+            image.model_shaded(&model, light_dir, ModelShading::Textured, Some(3.0))
+        }
     }
 
     image.flip_y();
