@@ -14,6 +14,7 @@ pub struct Vertex {
 pub struct FacePoint {
     pub vertices_index: usize,
     pub uv_index: usize,
+    pub normals_index: usize,
 }
 
 #[derive(Clone, Debug, Constructor)]
@@ -67,6 +68,7 @@ impl ModelInput {}
 #[derive(Clone, Debug)]
 pub struct Model {
     pub vertices: Vec<Vertex>,
+    pub vertex_normals: Vec<Vec3>,
     pub faces: Vec<Face>,
     pub texture_coords: Vec<Vec2>,
     pub diffuse_texture: Texture,
@@ -106,6 +108,7 @@ impl Model {
         let mut vertices = Vec::new();
         let mut faces = Vec::new();
         let mut texture_coords = Vec::new();
+        let mut vertex_normals = Vec::new();
         for line in contents.lines() {
             let line = line.trim();
             if line.len() == 0 {
@@ -137,6 +140,7 @@ impl Model {
                         let mut vertex_parts = vertex.split('/');
                         let vertices_index = vertex_parts.next().unwrap().parse::<i32>().unwrap();
                         let uvs_index = vertex_parts.next().unwrap().parse::<i32>().unwrap();
+                        let normals_index = vertex_parts.next().unwrap().parse::<i32>().unwrap();
                         // vertex indices should be 1-based & we ignore negative indices even though
                         // officially they are allowed
                         assert!(
@@ -147,10 +151,15 @@ impl Model {
                             uvs_index > 0,
                             "Only positive 1-based indexing is supported for face texture coordinate indexing"
                         );
+                        assert!(
+                            normals_index > 0,
+                            "Only positive 1-based indexing is supported for face normal indexing"
+                        );
 
                         vertices.push(FacePoint::new(
                             vertices_index as usize - 1,
                             uvs_index as usize - 1,
+                            normals_index as usize - 1,
                         ));
                     }
                     debug_assert!(
@@ -165,13 +174,27 @@ impl Model {
                     let mut extract_float = || {
                         parts
                             .next()
-                            .expect("vertex data point")
+                            .expect("vertex tex coord")
                             .parse::<f32>()
-                            .expect("vertex float position")
+                            .expect("vertex float coord")
+                    };
+                    let u = extract_float();
+                    let v = extract_float();
+                    texture_coords.push(Vec2::new(u, v));
+                }
+                "vn" => {
+                    // vertex normal vectors, eg: vn  0.001 0.482 -0.876
+                    let mut extract_float = || {
+                        parts
+                            .next()
+                            .expect("vertex normal component")
+                            .parse::<f32>()
+                            .expect("vertex float component")
                     };
                     let x = extract_float();
                     let y = extract_float();
-                    texture_coords.push(Vec2::new(x, y));
+                    let z = extract_float();
+                    vertex_normals.push(Vec3::new(x, y, z));
                 }
                 _ => (), // ignore unknown line type
             }
@@ -182,6 +205,7 @@ impl Model {
 
         Ok(Self {
             vertices,
+            vertex_normals,
             faces,
             texture_coords,
             diffuse_texture,

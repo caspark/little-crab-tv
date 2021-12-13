@@ -27,6 +27,7 @@ pub enum RenderScene {
     ModelDepthTested,
     ModelTextured,
     ModelPerspective,
+    ModelGouraud,
 }
 
 pub fn render_scene(
@@ -105,6 +106,9 @@ pub fn render_scene(
         }
         RenderScene::ModelPerspective => {
             image.model_shaded(&model, light_dir, ModelShading::Textured, Some(3.0))
+        }
+        RenderScene::ModelGouraud => {
+            image.model_shaded(&model, light_dir, ModelShading::Gouraud, Some(3.0))
         }
     }
 

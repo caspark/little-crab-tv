@@ -12,6 +12,7 @@ pub enum ModelShading {
     FlatOnly,
     DepthTested,
     Textured,
+    Gouraud,
 }
 
 #[derive(Clone, Debug)]
@@ -383,11 +384,26 @@ impl Canvas {
                 );
             }
 
-            let n = (world_coords[2] - world_coords[0]).cross(world_coords[1] - world_coords[0]);
-            let n = n.normalize();
-            let intensity: f32 = n.dot(light_dir);
-            if intensity > 0.0 {
-                let w = (intensity * 255.0) as u8;
+            let mut vertex_intensity = [0.0f32; 3];
+            if shading == ModelShading::Gouraud {
+                for j in 0..3 {
+                    vertex_intensity[j] =
+                        model.vertex_normals[face.points[j].normals_index].dot(-light_dir);
+                }
+            } else {
+                let n =
+                    (world_coords[2] - world_coords[0]).cross(world_coords[1] - world_coords[0]);
+                let n = n.normalize();
+                let intensity: f32 = n.dot(light_dir);
+                for j in 0..3 {
+                    vertex_intensity[j] = intensity;
+                }
+            };
+
+            if vertex_intensity.iter().any(|i| *i > 0.0) {
+                let avg_intensity =
+                    vertex_intensity.iter().sum::<f32>() / vertex_intensity.len() as f32;
+                let w = (avg_intensity * 255.0) as u8;
                 match shading {
                     ModelShading::FlatOnly => {
                         self.triangle_barycentric(&screen_coords_2d, RGB8::new(w, w, w))
@@ -398,7 +414,13 @@ impl Canvas {
                         &screen_coords_3d,
                         &model.diffuse_texture,
                         &texture_coords,
-                        intensity,
+                        avg_intensity,
+                    ),
+                    ModelShading::Gouraud => self.triangle_barycentric_gouraud(
+                        &screen_coords_3d,
+                        &model.diffuse_texture,
+                        &texture_coords,
+                        &vertex_intensity,
                     ),
                 }
             }
@@ -635,6 +657,57 @@ impl Canvas {
 
                     let color = tex.data[(tex.height - uv.y as usize) * tex.width + uv.x as usize]
                         .map(|comp| (comp as f32 * light_intensity) as u8);
+
+                    *self.pixel(i, j) = color;
+                }
+            }
+        }
+    }
+
+    pub fn triangle_barycentric_gouraud(
+        &mut self,
+        pts: &[Vec3],
+        tex: &Texture,
+        varying_uv: &[Vec2],
+        light_intensity: &[f32],
+    ) {
+        let mut bboxmin = Vec2::new((self.width - 1) as f32, (self.height - 1) as f32);
+        let mut bboxmax = Vec2::new(0.0, 0.0);
+        let clamp = Vec2::new((self.width - 1) as f32, (self.height - 1) as f32);
+
+        for i in 0..3 {
+            for j in 0..2 {
+                bboxmin[j] = yolo_max(0.0, yolo_min(bboxmin[j], pts[i][j]));
+                bboxmax[j] = yolo_min(clamp[j], yolo_max(bboxmax[j], pts[i][j]));
+            }
+        }
+
+        for i in (bboxmin.x as i32)..=(bboxmax.x as i32) {
+            for j in (bboxmin.y as i32)..=(bboxmax.y as i32) {
+                let p = Vec2::new(i as f32, j as f32);
+                let bc_screen = maths::barycentric_coords_3d(pts, p);
+                if bc_screen.x < 0.0 || bc_screen.y < 0.0 || bc_screen.z < 0.0 {
+                    continue;
+                }
+                let mut pixel_z = 0.0;
+                for k in 0..3 {
+                    pixel_z += pts[k][2] * bc_screen[k];
+                }
+                let z_buf_for_pixel = self.z_buffer_at(i, j);
+                if *z_buf_for_pixel < pixel_z {
+                    *z_buf_for_pixel = pixel_z;
+
+                    let uv = varying_uv[0] * bc_screen[0]
+                        + varying_uv[1] * bc_screen[1]
+                        + varying_uv[2] * bc_screen[2];
+                    // the bit that differs from standard flat shading: interpolate the light
+                    // intensity using barycentric coordinates of this pixel
+                    let weighted_light_intensity = light_intensity[0] * bc_screen[0]
+                        + light_intensity[1] * bc_screen[1]
+                        + light_intensity[2] * bc_screen[2];
+
+                    let color = tex.data[(tex.height - uv.y as usize) * tex.width + uv.x as usize]
+                        .map(|comp| (comp as f32 * weighted_light_intensity) as u8);
 
                     *self.pixel(i, j) = color;
                 }
