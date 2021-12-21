@@ -1,7 +1,11 @@
 use anyhow::Result;
-use glam::{IVec2, Mat4, Vec3};
+use glam::{IVec2, Mat4, Vec2, Vec3, Vec4};
 
-use crab_tv::{Canvas, Model, ModelShading, BLUE, CYAN, GREEN, RED, WHITE};
+use crab_tv::{
+    Canvas, Model, ModelShading, Shader, Texture, VertexShaderInput, VertexShaderOutput, BLUE,
+    CYAN, GREEN, RED, WHITE,
+};
+use rgb::{ComponentMap, RGB8};
 
 #[derive(
     Copy,
@@ -29,6 +33,7 @@ pub enum RenderScene {
     ModelPerspective,
     ModelGouraud,
     CameraMovable,
+    ShaderGouraud,
 }
 
 pub fn render_scene(
@@ -110,34 +115,53 @@ pub fn render_scene(
             image.model_colored_triangles(&model);
         }
         RenderScene::ModelFlatShaded => {
-            image.model_shaded(&model, light_dir, ModelShading::FlatOnly, None);
+            image.model_fixed_function(&model, light_dir, ModelShading::FlatOnly, None);
         }
         RenderScene::ModelDepthTested => {
-            image.model_shaded(&model, light_dir, ModelShading::DepthTested, None);
+            image.model_fixed_function(&model, light_dir, ModelShading::DepthTested, None);
         }
         RenderScene::ModelTextured => {
-            image.model_shaded(&model, light_dir, ModelShading::Textured, None)
+            image.model_fixed_function(&model, light_dir, ModelShading::Textured, None)
         }
-        RenderScene::ModelPerspective => image.model_shaded(
+        RenderScene::ModelPerspective => image.model_fixed_function(
             &model,
             light_dir,
             ModelShading::Textured,
             Some(perspective_projection_transform),
         ),
-        RenderScene::ModelGouraud => image.model_shaded(
+        RenderScene::ModelGouraud => image.model_fixed_function(
             &model,
             light_dir,
             ModelShading::Gouraud,
             Some(perspective_projection_transform),
         ),
         RenderScene::CameraMovable => {
-            let model_view_transform = look_at(camera_look_from, camera_look_at, camera_up);
-            image.model_shaded(
+            let model_view_transform =
+                look_at_transform(camera_look_from, camera_look_at, camera_up);
+            image.model_fixed_function(
                 &model,
                 light_dir,
                 ModelShading::Gouraud,
                 Some(perspective_projection_transform * model_view_transform),
             )
+        }
+        RenderScene::ShaderGouraud => {
+            let viewport = viewport_transform(
+                image.width() as f32 / 8.0,
+                image.height() as f32 / 8.0,
+                image.width() as f32 * 3.0 / 4.0,
+                image.height() as f32 * 3.0 / 4.0,
+            );
+            let model_view_transform =
+                look_at_transform(camera_look_from, camera_look_at, camera_up);
+
+            let shader = GouraudShader::new(
+                viewport * perspective_projection_transform * model_view_transform,
+                light_dir,
+                Some(&model.diffuse_texture),
+            );
+
+            image.model_shader(&model, &shader);
         }
     }
 
@@ -146,7 +170,7 @@ pub fn render_scene(
     Ok(())
 }
 
-fn look_at(eye: Vec3, center: Vec3, up: Vec3) -> Mat4 {
+fn look_at_transform(eye: Vec3, center: Vec3, up: Vec3) -> Mat4 {
     let z = (eye - center).normalize();
     let x = up.cross(z).normalize();
     let y = z.cross(x).normalize();
@@ -159,6 +183,92 @@ fn look_at(eye: Vec3, center: Vec3, up: Vec3) -> Mat4 {
         tr.col_mut(3)[i] = -center[i];
     }
     minv * tr
+}
+
+// viewport matrix resizes/repositions the result to fit on screen
+fn viewport_transform(x: f32, y: f32, w: f32, h: f32) -> Mat4 {
+    let depth = 255.0;
+    Mat4::from_cols(
+        [w / 2.0, 0.0, 0.0, 0.0].into(),
+        [0.0, h / 2.0, 0.0, 0.0].into(),
+        [0.0, 0.0, depth / 2.0, 0.0].into(),
+        [x + w / 2.0, y + h / 2.0, depth / 2.0, 1.0].into(),
+    )
+}
+
+#[derive(Clone, Debug)]
+struct GouraudShader<'t> {
+    light_dir: Vec3,
+    diffuse_texture: Option<&'t Texture>,
+    vertex_transform: Mat4,
+}
+
+impl<'t> GouraudShader<'t> {
+    pub fn new(
+        vertex_transform: Mat4,
+        light_dir: Vec3,
+        diffuse_texture: Option<&'t Texture>,
+    ) -> GouraudShader {
+        Self {
+            vertex_transform,
+            light_dir,
+            diffuse_texture,
+        }
+    }
+}
+
+impl Shader for GouraudShader<'_> {
+    fn vertex(&self, input: VertexShaderInput) -> VertexShaderOutput {
+        // Transform the vertex position
+        // step 1 - embed into 4D space by converting to homogeneous coordinates
+        let mut vec4: Vec4 = (input.pos, 1.0).into();
+        // step 2 - multiply with projection & viewport matrices to correct perspective
+        vec4 = self.vertex_transform * vec4;
+        // step 3 - divide by w to reproject into 3d screen coordinates
+        let screen_coords = Vec3::new(vec4.x / vec4.w, vec4.y / vec4.w, vec4.z / vec4.w);
+
+        // Transform the vertex texture coordinates based on the texture we have
+        let texture_coords = if let Some(ref texture) = self.diffuse_texture {
+            Vec2::new(
+                input.uv.x * texture.width as f32,
+                input.uv.y * texture.height as f32,
+            )
+        } else {
+            input.uv
+        };
+
+        // Calculate the light intensity
+        let light_intensity = input.normal.dot(self.light_dir);
+
+        VertexShaderOutput {
+            pos: screen_coords,
+            uv: texture_coords,
+            light_intensity,
+        }
+    }
+
+    fn fragment(
+        &self,
+        barycentric_coords: Vec3,
+        varying_uv: [Vec2; 3],
+        light_intensity: [f32; 3],
+    ) -> Option<RGB8> {
+        let uv = varying_uv[0] * barycentric_coords[0]
+            + varying_uv[1] * barycentric_coords[1]
+            + varying_uv[2] * barycentric_coords[2];
+
+        let weighted_light_intensity = light_intensity[0] * barycentric_coords[0]
+            + light_intensity[1] * barycentric_coords[1]
+            + light_intensity[2] * barycentric_coords[2];
+
+        let unlit_color = if let Some(ref tex) = self.diffuse_texture {
+            tex.data[(tex.height - uv.y as usize) * tex.width + uv.x as usize]
+        } else {
+            crab_tv::WHITE
+        };
+
+        Some(unlit_color.map(|comp| (comp as f32 * weighted_light_intensity) as u8))
+    }
 }
 
 #[cfg(test)]
