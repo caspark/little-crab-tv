@@ -28,6 +28,7 @@ pub enum RenderScene {
     ModelTextured,
     ModelPerspective,
     ModelGouraud,
+    CameraMovable,
 }
 
 pub fn render_scene(
@@ -36,7 +37,9 @@ pub fn render_scene(
     model: &Model,
     light_dir: Vec3,
     camera_distance: f32,
-    camera_position: Vec3,
+    camera_look_from: Vec3,
+    camera_look_at: Vec3,
+    camera_up: Vec3,
 ) -> Result<()> {
     println!("Rendering scene: {}", scene);
     match scene {
@@ -98,25 +101,34 @@ pub fn render_scene(
             image.model_colored_triangles(&model);
         }
         RenderScene::ModelFlatShaded => {
-            image.model_shaded(&model, light_dir, ModelShading::FlatOnly, None);
+            image.model_shaded(&model, light_dir, ModelShading::FlatOnly, None, None);
         }
         RenderScene::ModelDepthTested => {
-            image.model_shaded(&model, light_dir, ModelShading::DepthTested, None);
+            image.model_shaded(&model, light_dir, ModelShading::DepthTested, None, None);
         }
         RenderScene::ModelTextured => {
-            image.model_shaded(&model, light_dir, ModelShading::Textured, None)
+            image.model_shaded(&model, light_dir, ModelShading::Textured, None, None)
         }
         RenderScene::ModelPerspective => image.model_shaded(
             &model,
             light_dir,
             ModelShading::Textured,
             Some(camera_distance),
+            None,
         ),
         RenderScene::ModelGouraud => image.model_shaded(
             &model,
             light_dir,
             ModelShading::Gouraud,
             Some(camera_distance),
+            None,
+        ),
+        RenderScene::CameraMovable => image.model_shaded(
+            &model,
+            light_dir,
+            ModelShading::Gouraud,
+            Some(camera_distance),
+            Some((camera_look_from, camera_look_at, camera_up)),
         ),
     }
 
@@ -146,6 +158,8 @@ mod tests {
                 )?)
                 .expect("model load should succeed"),
                 Vec3::new(0.0, 0.0, -1.0),
+                3.0,
+                Vec3::new(0.0, 0.0, 3.0),
             )?;
         }
         Ok(())

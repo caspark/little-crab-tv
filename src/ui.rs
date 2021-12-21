@@ -128,8 +128,10 @@ impl RendererApp {
             &input.scene,
             &model,
             input.light_dir,
-            input.camera_distance,
-            input.camera_position,
+            input.camera_perspective_dist,
+            input.camera_look_from,
+            input.camera_look_at,
+            input.camera_up,
         )
         .unwrap();
 
@@ -241,17 +243,33 @@ impl epi::App for RendererApp {
                         }
                         ui.end_row();
 
-                        ui.add(
-                            egui::Slider::new(&mut self.config.camera_distance, 1.0..=10.0)
-                                .text("Camera Distance"),
-                        );
+                        vec3_editor(ui, "Camera look from", &mut self.config.camera_look_from);
                         ui.end_row();
 
-                        let camera_pos_before = self.config.camera_position;
-                        vec3_editor(ui, "Camera Pos", &mut self.config.camera_position);
-                        if camera_pos_before != self.config.camera_position {
-                            self.config.camera_distance = self.config.camera_position.z;
+                        vec3_editor(ui, "Camera look at", &mut self.config.camera_look_at);
+                        ui.end_row();
+
+                        let camera_up_before = self.config.camera_up;
+                        vec3_editor(ui, "Camera up dir", &mut self.config.camera_up);
+                        if camera_up_before != self.config.camera_up {
+                            self.config.camera_up = self
+                                .config
+                                .camera_up
+                                .try_normalize()
+                                .unwrap_or_else(|| RenderConfig::default().camera_up);
                         }
+                        ui.end_row();
+
+                        ui.horizontal(|ui| {
+                            ui.add(
+                                egui::Slider::new(&mut self.config.camera_distance, 1.0..=10.0)
+                                    .text("Camera perspective distance"),
+                            );
+                            if ui.add(egui::widgets::Button::new("Reset")).clicked() {
+                                self.config.camera_distance =
+                                    self.config.camera_look_from.distance(Vec3::ZERO);
+                            }
+                        });
                         ui.end_row();
                     });
 

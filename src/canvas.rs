@@ -303,8 +303,9 @@ impl Canvas {
         light_dir: Vec3,
         shading: ModelShading,
         camera_dist: Option<f32>,
+        camera_positioning: Option<(Vec3, Vec3, Vec3)>, // look from, look at, look up
     ) {
-        let perspective_correction = camera_dist.map(|camera_dist| {
+        let transform = camera_dist.map(|camera_dist| {
             fn viewport_transform(x: f32, y: f32, w: f32, h: f32) -> Mat4 {
                 let depth = 255.0;
                 Mat4::from_cols(
@@ -329,7 +330,14 @@ impl Canvas {
                 [0.0, 0.0, 1.0, -1.0 / camera_dist].into(),
                 [0.0, 0.0, 0.0, 1.0].into(),
             );
-            viewport * projection
+            let viewport_projection = viewport * projection;
+
+            if let Some(camera_pos) = camera_positioning {
+                let model_view = look_at(camera_pos.0, camera_pos.1, camera_pos.2);
+                viewport_projection * model_view
+            } else {
+                viewport_projection
+            }
         });
 
         for face in model.faces.iter() {
@@ -360,11 +368,11 @@ impl Canvas {
 
                 world_coords[j] = v.pos;
 
-                if let Some(perspective_correction) = perspective_correction {
+                if let Some(transform) = transform {
                     // step 1 - embed into 4D space by converting to homogeneous coordinates
                     let mut vec4: Vec4 = (v.pos, 1.0).into();
                     // step 2 - multiply with projection & viewport matrices to correct perspective
-                    vec4 = perspective_correction * vec4;
+                    vec4 = transform * vec4;
                     // step 3 - divide by w to reproject into 3d screen coordinates
                     screen_coords_3d[j] =
                         Vec3::new(vec4.x / vec4.w, vec4.y / vec4.w, vec4.z / vec4.w);
@@ -388,13 +396,13 @@ impl Canvas {
             if shading == ModelShading::Gouraud {
                 for j in 0..3 {
                     vertex_intensity[j] =
-                        model.vertex_normals[face.points[j].normals_index].dot(-light_dir);
+                        model.vertex_normals[face.points[j].normals_index].dot(light_dir);
                 }
             } else {
                 let n =
                     (world_coords[2] - world_coords[0]).cross(world_coords[1] - world_coords[0]);
                 let n = n.normalize();
-                let intensity: f32 = n.dot(light_dir);
+                let intensity: f32 = n.dot(-light_dir);
                 for j in 0..3 {
                     vertex_intensity[j] = intensity;
                 }
@@ -718,4 +726,26 @@ impl Canvas {
     pub fn triangle(&mut self, pts: &[Vec3], color: RGB8) {
         self.triangle_barycentric_depth_tested(pts, color);
     }
+}
+
+fn look_at(eye: Vec3, center: Vec3, up: Vec3) -> Mat4 {
+    let z = (eye - center).normalize();
+    let x = up.cross(z).normalize();
+    let y = z.cross(x).normalize();
+    let mut minv = Mat4::IDENTITY;
+    let mut tr = Mat4::IDENTITY;
+    for i in 0..3 {
+        minv.col_mut(i)[0] = x[i];
+        minv.col_mut(i)[1] = y[i];
+        minv.col_mut(i)[2] = z[i];
+
+        // minv.col_mut(0)[i] = x[i];
+        // minv.col_mut(1)[i] = y[i];
+        // minv.col_mut(2)[i] = z[i];
+
+        // tr.col_mut(i).w = -center[i];
+
+        tr.col_mut(3)[i] = -center[i];
+    }
+    minv * tr
 }

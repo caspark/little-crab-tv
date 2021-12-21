@@ -4,7 +4,7 @@
 mod scenes;
 mod ui;
 
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 use crate::scenes::RenderScene;
 use anyhow::{bail, Context, Result};
@@ -20,7 +20,9 @@ pub struct RenderConfig {
     model: PathBuf,
     light_dir: Vec3,
     camera_distance: f32,
-    camera_position: Vec3,
+    camera_look_from: Vec3,
+    camera_look_at: Vec3,
+    camera_up: Vec3,
     output_filename: String,
     display_actual_size: bool,
     auto_rerender: bool,
@@ -46,43 +48,21 @@ impl RenderConfig {
         let model_input = Model::validate(&self.model)
             .with_context(|| format!("Failed to load model from {}", self.model.display()))?;
 
+        if self.camera_look_from == self.camera_look_at {
+            bail!("Camera's 'look from' position must not be the same as its 'look at' position");
+        }
+
         Ok(RenderInput {
             scene: self.scene,
             width: self.width,
             height: self.height,
             model_input,
             light_dir: self.light_dir,
-            camera_distance: self.camera_distance,
-            camera_position: self.camera_position,
+            camera_perspective_dist: self.camera_distance,
+            camera_look_from: self.camera_look_from,
+            camera_look_at: self.camera_look_at,
+            camera_up: self.camera_up,
         })
-    }
-}
-impl RenderConfig {
-    #![allow(unused)]
-
-    pub(crate) fn scene(&mut self, scene: RenderScene) -> &mut Self {
-        self.scene = scene;
-        self
-    }
-
-    pub(crate) fn dimensions(&mut self, width: usize, height: usize) -> &mut Self {
-        self.width = width;
-        self.height = height;
-        self
-    }
-
-    pub(crate) fn model(&mut self, model: &Path) -> &mut Self {
-        self.model = model.to_owned();
-        self
-    }
-    pub(crate) fn output_filename(&mut self, output_filename: String) -> &mut Self {
-        self.output_filename = output_filename;
-        self
-    }
-
-    pub(crate) fn display_actual_size(&mut self, display_actual_size: bool) -> &mut Self {
-        self.display_actual_size = display_actual_size;
-        self
     }
 }
 
@@ -90,16 +70,16 @@ impl Default for RenderConfig {
     fn default() -> Self {
         use strum::IntoEnumIterator;
 
-        let pos = Vec3::new(0.0, 0.0, 3.0);
-
         Self {
             scene: RenderScene::iter().last().unwrap(),
             width: 1000,
             height: 1000,
             model: PathBuf::from("assets/african_head.obj"),
-            light_dir: Vec3::new(0.0, 0.0, -1.0),
-            camera_distance: pos.z,
-            camera_position: pos,
+            light_dir: Vec3::new(0.0, 0.0, 1.0),
+            camera_distance: 3.0,
+            camera_look_from: Vec3::new(0.0, 0.0, 3.0),
+            camera_look_at: Vec3::ZERO,
+            camera_up: Vec3::new(0.0, 1.0, 0.0),
             output_filename: "target/output.png".to_owned(),
             display_actual_size: true,
             auto_rerender: true,
@@ -114,8 +94,10 @@ pub struct RenderInput {
     height: usize,
     model_input: ModelInput,
     light_dir: Vec3,
-    camera_distance: f32,
-    camera_position: Vec3,
+    camera_perspective_dist: f32,
+    camera_look_from: Vec3,
+    camera_look_at: Vec3,
+    camera_up: Vec3,
 }
 
 fn main() {
