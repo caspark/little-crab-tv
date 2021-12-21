@@ -302,43 +302,26 @@ impl Canvas {
         model: &Model,
         light_dir: Vec3,
         shading: ModelShading,
-        camera_dist: Option<f32>,
-        camera_positioning: Option<(Vec3, Vec3, Vec3)>, // look from, look at, look up
+        transform: Option<Mat4>,
     ) {
-        let transform = camera_dist.map(|camera_dist| {
-            fn viewport_transform(x: f32, y: f32, w: f32, h: f32) -> Mat4 {
-                let depth = 255.0;
-                Mat4::from_cols(
-                    [w / 2.0, 0.0, 0.0, 0.0].into(),
-                    [0.0, h / 2.0, 0.0, 0.0].into(),
-                    [0.0, 0.0, depth / 2.0, 0.0].into(),
-                    [x + w / 2.0, y + h / 2.0, depth / 2.0, 1.0].into(),
-                )
-            }
+        // viewport matrix resizes/repositions the result to fit on screen
+        fn viewport_transform(x: f32, y: f32, w: f32, h: f32) -> Mat4 {
+            let depth = 255.0;
+            Mat4::from_cols(
+                [w / 2.0, 0.0, 0.0, 0.0].into(),
+                [0.0, h / 2.0, 0.0, 0.0].into(),
+                [0.0, 0.0, depth / 2.0, 0.0].into(),
+                [x + w / 2.0, y + h / 2.0, depth / 2.0, 1.0].into(),
+            )
+        }
+        let viewport = viewport_transform(
+            self.width() as f32 / 8.0,
+            self.height() as f32 / 8.0,
+            self.width() as f32 * 3.0 / 4.0,
+            self.height() as f32 * 3.0 / 4.0,
+        );
 
-            // viewport matrix resizes/repositions the result to fit on screen
-            let viewport = viewport_transform(
-                self.width() as f32 / 8.0,
-                self.height() as f32 / 8.0,
-                self.width() as f32 * 3.0 / 4.0,
-                self.height() as f32 * 3.0 / 4.0,
-            );
-            // projection matrix applies perspective correction
-            let projection: Mat4 = Mat4::from_cols(
-                [1.0, 0.0, 0.0, 0.0].into(),
-                [0.0, 1.0, 0.0, 0.0].into(),
-                [0.0, 0.0, 1.0, -1.0 / camera_dist].into(),
-                [0.0, 0.0, 0.0, 1.0].into(),
-            );
-            let viewport_projection = viewport * projection;
-
-            if let Some(camera_pos) = camera_positioning {
-                let model_view = look_at(camera_pos.0, camera_pos.1, camera_pos.2);
-                viewport_projection * model_view
-            } else {
-                viewport_projection
-            }
-        });
+        let overall_transform = viewport * transform.unwrap_or(Mat4::IDENTITY);
 
         for face in model.faces.iter() {
             let mut screen_coords_2d = [IVec2::ZERO; 3];
@@ -368,22 +351,12 @@ impl Canvas {
 
                 world_coords[j] = v.pos;
 
-                if let Some(transform) = transform {
-                    // step 1 - embed into 4D space by converting to homogeneous coordinates
-                    let mut vec4: Vec4 = (v.pos, 1.0).into();
-                    // step 2 - multiply with projection & viewport matrices to correct perspective
-                    vec4 = transform * vec4;
-                    // step 3 - divide by w to reproject into 3d screen coordinates
-                    screen_coords_3d[j] =
-                        Vec3::new(vec4.x / vec4.w, vec4.y / vec4.w, vec4.z / vec4.w);
-                } else {
-                    // not doing perspective correction
-                    screen_coords_3d[j] = Vec3::new(
-                        (v.pos.x + 1.0) * (self.width as f32 - 1.0) / 2.0,
-                        (v.pos.y + 1.0) * (self.height as f32 - 1.0) / 2.0,
-                        v.pos.z,
-                    );
-                }
+                // step 1 - embed into 4D space by converting to homogeneous coordinates
+                let mut vec4: Vec4 = (v.pos, 1.0).into();
+                // step 2 - multiply with projection & viewport matrices to correct perspective
+                vec4 = overall_transform * vec4;
+                // step 3 - divide by w to reproject into 3d screen coordinates
+                screen_coords_3d[j] = Vec3::new(vec4.x / vec4.w, vec4.y / vec4.w, vec4.z / vec4.w);
 
                 let raw_texture_coords = model.texture_coords[face.points[j].uv_index];
                 texture_coords[j] = Vec2::new(
@@ -726,26 +699,4 @@ impl Canvas {
     pub fn triangle(&mut self, pts: &[Vec3], color: RGB8) {
         self.triangle_barycentric_depth_tested(pts, color);
     }
-}
-
-fn look_at(eye: Vec3, center: Vec3, up: Vec3) -> Mat4 {
-    let z = (eye - center).normalize();
-    let x = up.cross(z).normalize();
-    let y = z.cross(x).normalize();
-    let mut minv = Mat4::IDENTITY;
-    let mut tr = Mat4::IDENTITY;
-    for i in 0..3 {
-        minv.col_mut(i)[0] = x[i];
-        minv.col_mut(i)[1] = y[i];
-        minv.col_mut(i)[2] = z[i];
-
-        // minv.col_mut(0)[i] = x[i];
-        // minv.col_mut(1)[i] = y[i];
-        // minv.col_mut(2)[i] = z[i];
-
-        // tr.col_mut(i).w = -center[i];
-
-        tr.col_mut(3)[i] = -center[i];
-    }
-    minv * tr
 }

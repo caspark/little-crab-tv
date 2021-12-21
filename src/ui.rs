@@ -260,16 +260,10 @@ impl epi::App for RendererApp {
                         }
                         ui.end_row();
 
-                        ui.horizontal(|ui| {
-                            ui.add(
-                                egui::Slider::new(&mut self.config.camera_distance, 1.0..=10.0)
-                                    .text("Camera perspective distance"),
-                            );
-                            if ui.add(egui::widgets::Button::new("Reset")).clicked() {
-                                self.config.camera_distance =
-                                    self.config.camera_look_from.distance(Vec3::ZERO);
-                            }
-                        });
+                        ui.add(
+                            egui::Slider::new(&mut self.config.camera_distance, 1.0..=10.0)
+                                .text("Camera perspective distance"),
+                        );
                         ui.end_row();
                     });
 

@@ -1,5 +1,5 @@
 use anyhow::Result;
-use glam::{IVec2, Vec3};
+use glam::{IVec2, Mat4, Vec3};
 
 use crab_tv::{Canvas, Model, ModelShading, BLUE, CYAN, GREEN, RED, WHITE};
 
@@ -42,6 +42,15 @@ pub fn render_scene(
     camera_up: Vec3,
 ) -> Result<()> {
     println!("Rendering scene: {}", scene);
+
+    // projection matrix applies perspective correction
+    let perspective_projection_transform = Mat4::from_cols(
+        [1.0, 0.0, 0.0, 0.0].into(),
+        [0.0, 1.0, 0.0, 0.0].into(),
+        [0.0, 0.0, 1.0, -1.0 / camera_distance].into(),
+        [0.0, 0.0, 0.0, 1.0].into(),
+    );
+
     match scene {
         RenderScene::FivePixels => {
             // pixel in the middle
@@ -101,40 +110,55 @@ pub fn render_scene(
             image.model_colored_triangles(&model);
         }
         RenderScene::ModelFlatShaded => {
-            image.model_shaded(&model, light_dir, ModelShading::FlatOnly, None, None);
+            image.model_shaded(&model, light_dir, ModelShading::FlatOnly, None);
         }
         RenderScene::ModelDepthTested => {
-            image.model_shaded(&model, light_dir, ModelShading::DepthTested, None, None);
+            image.model_shaded(&model, light_dir, ModelShading::DepthTested, None);
         }
         RenderScene::ModelTextured => {
-            image.model_shaded(&model, light_dir, ModelShading::Textured, None, None)
+            image.model_shaded(&model, light_dir, ModelShading::Textured, None)
         }
         RenderScene::ModelPerspective => image.model_shaded(
             &model,
             light_dir,
             ModelShading::Textured,
-            Some(camera_distance),
-            None,
+            Some(perspective_projection_transform),
         ),
         RenderScene::ModelGouraud => image.model_shaded(
             &model,
             light_dir,
             ModelShading::Gouraud,
-            Some(camera_distance),
-            None,
+            Some(perspective_projection_transform),
         ),
-        RenderScene::CameraMovable => image.model_shaded(
-            &model,
-            light_dir,
-            ModelShading::Gouraud,
-            Some(camera_distance),
-            Some((camera_look_from, camera_look_at, camera_up)),
-        ),
+        RenderScene::CameraMovable => {
+            let model_view_transform = look_at(camera_look_from, camera_look_at, camera_up);
+            image.model_shaded(
+                &model,
+                light_dir,
+                ModelShading::Gouraud,
+                Some(perspective_projection_transform * model_view_transform),
+            )
+        }
     }
 
     image.flip_y();
 
     Ok(())
+}
+
+fn look_at(eye: Vec3, center: Vec3, up: Vec3) -> Mat4 {
+    let z = (eye - center).normalize();
+    let x = up.cross(z).normalize();
+    let y = z.cross(x).normalize();
+    let mut minv = Mat4::IDENTITY;
+    let mut tr = Mat4::IDENTITY;
+    for i in 0..3 {
+        minv.col_mut(i)[0] = x[i];
+        minv.col_mut(i)[1] = y[i];
+        minv.col_mut(i)[2] = z[i];
+        tr.col_mut(3)[i] = -center[i];
+    }
+    minv * tr
 }
 
 #[cfg(test)]
@@ -160,6 +184,8 @@ mod tests {
                 Vec3::new(0.0, 0.0, -1.0),
                 3.0,
                 Vec3::new(0.0, 0.0, 3.0),
+                Vec3::ZERO,
+                Vec3::new(0.0, 1.0, 0.0),
             )?;
         }
         Ok(())
