@@ -147,9 +147,7 @@ impl Canvas {
                 vertex_intensity[j] = vertex_shader_output.light_intensity;
             }
 
-            if vertex_intensity.iter().any(|i| *i > 0.0) {
-                self.triangle_shader(screen_coords, shader, texture_coords, vertex_intensity);
-            }
+            self.triangle_shader(screen_coords, shader, texture_coords, vertex_intensity);
         }
     }
 
