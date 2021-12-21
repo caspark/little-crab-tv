@@ -35,6 +35,8 @@ pub fn render_scene(
     scene: &RenderScene,
     model: &Model,
     light_dir: Vec3,
+    camera_distance: f32,
+    camera_position: Vec3,
 ) -> Result<()> {
     println!("Rendering scene: {}", scene);
     match scene {
@@ -104,12 +106,18 @@ pub fn render_scene(
         RenderScene::ModelTextured => {
             image.model_shaded(&model, light_dir, ModelShading::Textured, None)
         }
-        RenderScene::ModelPerspective => {
-            image.model_shaded(&model, light_dir, ModelShading::Textured, Some(3.0))
-        }
-        RenderScene::ModelGouraud => {
-            image.model_shaded(&model, light_dir, ModelShading::Gouraud, Some(3.0))
-        }
+        RenderScene::ModelPerspective => image.model_shaded(
+            &model,
+            light_dir,
+            ModelShading::Textured,
+            Some(camera_distance),
+        ),
+        RenderScene::ModelGouraud => image.model_shaded(
+            &model,
+            light_dir,
+            ModelShading::Gouraud,
+            Some(camera_distance),
+        ),
     }
 
     image.flip_y();

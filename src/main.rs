@@ -19,6 +19,8 @@ pub struct RenderConfig {
     height: usize,
     model: PathBuf,
     light_dir: Vec3,
+    camera_distance: f32,
+    camera_position: Vec3,
     output_filename: String,
     display_actual_size: bool,
     auto_rerender: bool,
@@ -50,6 +52,8 @@ impl RenderConfig {
             height: self.height,
             model_input,
             light_dir: self.light_dir,
+            camera_distance: self.camera_distance,
+            camera_position: self.camera_position,
         })
     }
 }
@@ -86,12 +90,16 @@ impl Default for RenderConfig {
     fn default() -> Self {
         use strum::IntoEnumIterator;
 
+        let pos = Vec3::new(0.0, 0.0, 3.0);
+
         Self {
             scene: RenderScene::iter().last().unwrap(),
-            width: 400,
-            height: 400,
+            width: 1000,
+            height: 1000,
             model: PathBuf::from("assets/african_head.obj"),
             light_dir: Vec3::new(0.0, 0.0, -1.0),
+            camera_distance: pos.z,
+            camera_position: pos,
             output_filename: "target/output.png".to_owned(),
             display_actual_size: true,
             auto_rerender: true,
@@ -106,6 +114,8 @@ pub struct RenderInput {
     height: usize,
     model_input: ModelInput,
     light_dir: Vec3,
+    camera_distance: f32,
+    camera_position: Vec3,
 }
 
 fn main() {

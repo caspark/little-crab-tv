@@ -123,7 +123,15 @@ impl RendererApp {
         let mut image = Canvas::new(input.width, input.height);
         let model = Model::load_obj_file(&input.model_input).expect("Failed to load model");
 
-        crate::scenes::render_scene(&mut image, &input.scene, &model, input.light_dir).unwrap();
+        crate::scenes::render_scene(
+            &mut image,
+            &input.scene,
+            &model,
+            input.light_dir,
+            input.camera_distance,
+            input.camera_position,
+        )
+        .unwrap();
 
         let data = self
             .data
@@ -232,6 +240,19 @@ impl epi::App for RendererApp {
                             self.config.light_dir = self.config.light_dir.normalize_or_zero();
                         }
                         ui.end_row();
+
+                        ui.add(
+                            egui::Slider::new(&mut self.config.camera_distance, 1.0..=10.0)
+                                .text("Camera Distance"),
+                        );
+                        ui.end_row();
+
+                        let camera_pos_before = self.config.camera_position;
+                        vec3_editor(ui, "Camera Pos", &mut self.config.camera_position);
+                        if camera_pos_before != self.config.camera_position {
+                            self.config.camera_distance = self.config.camera_position.z;
+                        }
+                        ui.end_row();
                     });
 
                     ui.collapsing("Save render", |ui| {
@@ -286,9 +307,7 @@ impl epi::App for RendererApp {
                         data.last_render_height as f32,
                     )
                 } else {
-                    let mut available = ui.available_size();
-                    available.y -= 25.0;
-                    available
+                    ui.available_size()
                 };
 
                 egui::ScrollArea::auto_sized().show(ui, |ui| {
