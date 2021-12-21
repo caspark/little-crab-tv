@@ -1,6 +1,6 @@
 # Crab TV
 
-A rasterizing software renderer, written in the spirit of https://github.com/ssloy/tinyrenderer
+A rasterizing software renderer, roughly following the approach laid out by https://github.com/ssloy/tinyrenderer
 
 ## Prereqs
 
@@ -12,4 +12,10 @@ A rasterizing software renderer, written in the spirit of https://github.com/ssl
 
 ```
 cargo watch -x run
+```
+
+That'll run the renderer in debug mode, but if you want to play with it then it's best to run it in release mode so that it doesn't run like molasses:
+
+```
+cargo run --release
 ```
