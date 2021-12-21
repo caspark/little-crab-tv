@@ -237,6 +237,8 @@ impl Shader for GouraudShader<'_> {
             input.uv
         };
 
+        // TODO transform normal (recalculate them after the transform) for use as normal map and for lighting
+
         // Calculate the light intensity
         let light_intensity = input.normal.dot(self.light_dir);
 
@@ -257,6 +259,7 @@ impl Shader for GouraudShader<'_> {
             + varying_uv[1] * barycentric_coords[1]
             + varying_uv[2] * barycentric_coords[2];
 
+        //TODO use normal map to calculate lighting, instead of barycentric coords
         let weighted_light_intensity = light_intensity[0] * barycentric_coords[0]
             + light_intensity[1] * barycentric_coords[1]
             + light_intensity[2] * barycentric_coords[2];
