@@ -197,7 +197,7 @@ fn viewport_transform(x: f32, y: f32, w: f32, h: f32) -> Mat4 {
 #[derive(Clone, Debug)]
 
 struct GouraudShaderState {
-    texture_coords: [Vec2; 3],
+    varying_uv: [Vec2; 3],
     light_intensity: [f32; 3],
 }
 
@@ -206,7 +206,6 @@ struct GouraudShader<'t> {
     light_dir: Vec3,
     diffuse_texture: Option<&'t Texture>,
     vertex_transform: Mat4,
-    state: Option<GouraudShaderState>,
 }
 
 impl<'t> GouraudShader<'t> {
@@ -219,15 +218,14 @@ impl<'t> GouraudShader<'t> {
             vertex_transform,
             light_dir,
             diffuse_texture,
-            state: None,
         }
     }
 }
 
-impl Shader for GouraudShader<'_> {
-    fn vertex(&mut self, input: [Vertex; 3]) -> [Vec3; 3] {
+impl Shader<GouraudShaderState> for GouraudShader<'_> {
+    fn vertex(&self, input: [Vertex; 3]) -> ([Vec3; 3], GouraudShaderState) {
         let mut output = [Vec3::ZERO; 3];
-        let mut texture_coords = [Vec2::ZERO; 3];
+        let mut varying_uv = [Vec2::ZERO; 3];
         let mut light_intensity = [0f32; 3];
         for (i, vert) in input.iter().enumerate() {
             output[i] = {
@@ -241,7 +239,7 @@ impl Shader for GouraudShader<'_> {
             };
 
             // Transform the vertex texture coordinates based on the texture we have
-            texture_coords[i] = if let Some(ref texture) = self.diffuse_texture {
+            varying_uv[i] = if let Some(ref texture) = self.diffuse_texture {
                 Vec2::new(
                     vert.uv.x * texture.width as f32,
                     vert.uv.y * texture.height as f32,
@@ -256,21 +254,20 @@ impl Shader for GouraudShader<'_> {
             light_intensity[i] = vert.normal.dot(self.light_dir);
         }
 
-        self.state = Some(GouraudShaderState {
-            texture_coords,
-            light_intensity,
-        });
-        output
+        (
+            output,
+            GouraudShaderState {
+                varying_uv,
+                light_intensity,
+            },
+        )
     }
 
-    fn fragment(&self, barycentric_coords: Vec3) -> Option<RGB8> {
+    fn fragment(&self, barycentric_coords: Vec3, state: &GouraudShaderState) -> Option<RGB8> {
         let GouraudShaderState {
-            texture_coords: varying_uv,
-            ref light_intensity,
-        } = self
-            .state
-            .as_ref()
-            .expect("vertex() should be called first to init per-triangle state");
+            varying_uv,
+            light_intensity,
+        } = state;
 
         let uv = varying_uv[0] * barycentric_coords[0]
             + varying_uv[1] * barycentric_coords[1]

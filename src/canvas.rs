@@ -13,9 +13,9 @@ pub struct Vertex {
     pub normal: Vec3,
 }
 
-pub trait Shader {
-    fn vertex(&mut self, triangle: [Vertex; 3]) -> [Vec3; 3];
-    fn fragment(&self, barycentric_coords: Vec3) -> Option<RGB8>;
+pub trait Shader<S> {
+    fn vertex(&self, triangle: [Vertex; 3]) -> ([Vec3; 3], S);
+    fn fragment(&self, barycentric_coords: Vec3, state: &S) -> Option<RGB8>;
 }
 
 #[derive(Clone, Debug)]
@@ -105,7 +105,7 @@ impl Canvas {
         }
     }
 
-    pub fn model_shader(&mut self, model: &Model, shader: &mut dyn Shader) {
+    pub fn model_shader<S>(&mut self, model: &Model, shader: &mut dyn Shader<S>) {
         for face in model.faces.iter() {
             let mut vertices = [Vertex::default(); 3];
             for j in 0..3 {
@@ -131,13 +131,13 @@ impl Canvas {
                 }
             }
 
-            let screen_coords = shader.vertex(vertices);
+            let (screen_coords, shader_state) = shader.vertex(vertices);
 
-            self.triangle_shader(screen_coords, shader);
+            self.triangle_shader(screen_coords, shader, shader_state);
         }
     }
 
-    pub fn triangle_shader(&mut self, pts: [Vec3; 3], shader: &mut dyn Shader) {
+    pub fn triangle_shader<S>(&mut self, pts: [Vec3; 3], shader: &dyn Shader<S>, shader_state: S) {
         let mut bboxmin = Vec2::new((self.width() - 1) as f32, (self.height() - 1) as f32);
         let mut bboxmax = Vec2::new(0.0, 0.0);
         let clamp = Vec2::new((self.width() - 1) as f32, (self.height() - 1) as f32);
@@ -162,7 +162,7 @@ impl Canvas {
                 }
                 let z_buf_for_pixel = self.z_buffer_at(i, j);
                 if *z_buf_for_pixel < pixel_z {
-                    let maybe_color = shader.fragment(bc_screen);
+                    let maybe_color = shader.fragment(bc_screen, &shader_state);
                     if let Some(color) = maybe_color {
                         *z_buf_for_pixel = pixel_z;
                         *self.pixel(i, j) = color;
