@@ -15,6 +15,7 @@ pub struct GouraudShader<'t> {
     light_dir: Vec3,
     diffuse_texture: Option<&'t Texture>,
     vertex_transform: Mat4,
+    bucket_light_intensity: bool,
 }
 
 impl<'t> GouraudShader<'t> {
@@ -22,11 +23,13 @@ impl<'t> GouraudShader<'t> {
         vertex_transform: Mat4,
         light_dir: Vec3,
         diffuse_texture: Option<&'t Texture>,
+        bucket_light_intensity: bool,
     ) -> GouraudShader {
         Self {
             vertex_transform,
             light_dir,
             diffuse_texture,
+            bucket_light_intensity,
         }
     }
 }
@@ -87,6 +90,12 @@ impl Shader<GouraudShaderState> for GouraudShader<'_> {
             + light_intensity[1] * barycentric_coords[1]
             + light_intensity[2] * barycentric_coords[2];
 
+        let weighted_light_intensity = if self.bucket_light_intensity {
+            bucket_intensity(weighted_light_intensity)
+        } else {
+            weighted_light_intensity
+        };
+
         let unlit_color = if let Some(ref tex) = self.diffuse_texture {
             tex.data[(tex.height - uv.y as usize) * tex.width + uv.x as usize]
         } else {
@@ -94,5 +103,21 @@ impl Shader<GouraudShaderState> for GouraudShader<'_> {
         };
 
         Some(unlit_color.map(|comp| (comp as f32 * weighted_light_intensity) as u8))
+    }
+}
+
+fn bucket_intensity(intensity: f32) -> f32 {
+    if intensity > 0.85 {
+        1.0
+    } else if intensity > 0.60 {
+        0.80
+    } else if intensity > 0.45 {
+        0.60
+    } else if intensity > 0.30 {
+        0.45
+    } else if intensity > 0.15 {
+        0.30
+    } else {
+        0.0
     }
 }

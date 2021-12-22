@@ -158,6 +158,7 @@ pub fn render_scene(
                 viewport * perspective_projection_transform * model_view_transform,
                 light_dir,
                 Some(&model.diffuse_texture),
+                false,
             );
 
             image.model_shader(&model, &mut shader);
