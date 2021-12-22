@@ -2,6 +2,7 @@
 #![allow(clippy::many_single_char_names)]
 
 mod scenes;
+mod shaders;
 mod ui;
 
 use std::path::PathBuf;
