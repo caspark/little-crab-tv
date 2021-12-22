@@ -6,27 +6,16 @@ use crate::{
     Model,
 };
 
-pub struct VertexShaderInput {
-    pub pos: Vec3,
+#[derive(Copy, Clone, Debug, PartialEq, Default)]
+pub struct Vertex {
+    pub position: Vec3,
     pub uv: Vec2,
     pub normal: Vec3,
 }
 
-pub struct VertexShaderOutput {
-    pub pos: Vec3,
-    // TODO these following params should not be part of the vertex shader output (instead allow vertex shader to save them & pixel shader to read them)
-    pub uv: Vec2,
-    pub light_intensity: f32,
-}
-
 pub trait Shader {
-    fn vertex(&self, input: VertexShaderInput) -> VertexShaderOutput;
-    fn fragment(
-        &self,
-        barycentric_coords: Vec3,
-        varying_uv: [Vec2; 3],
-        light_intensity: [f32; 3],
-    ) -> Option<RGB8>;
+    fn vertex(&mut self, triangle: [Vertex; 3]) -> [Vec3; 3];
+    fn fragment(&self, barycentric_coords: Vec3) -> Option<RGB8>;
 }
 
 #[derive(Clone, Debug)]
@@ -116,48 +105,39 @@ impl Canvas {
         }
     }
 
-    pub fn model_shader(&mut self, model: &Model, shader: &dyn Shader) {
+    pub fn model_shader(&mut self, model: &Model, shader: &mut dyn Shader) {
         for face in model.faces.iter() {
-            let mut screen_coords = [Vec3::ZERO; 3];
-            let mut texture_coords = [Vec2::ZERO; 3];
-            let mut vertex_intensity = [0.0f32; 3];
+            let mut vertices = [Vertex::default(); 3];
             for j in 0..3 {
-                let v = model.vertices[face.points[j].vertices_index];
-
-                // this simplistic rendering code assumes that the vertice coordinates are
-                // between -1 and 1, so confirm that assumption
-                debug_assert!(
-                    -1.0 <= v.pos.x && v.pos.x <= 1.0,
-                    "x coordinate out of range: {}",
-                    v.pos.x
-                );
-                debug_assert!(
-                    -1.0 <= v.pos.y && v.pos.y <= 1.0,
-                    "y coordinate out of range: {}",
-                    v.pos.y
-                );
-
-                let vertex_shader_output = shader.vertex(VertexShaderInput {
-                    pos: v.pos,
+                vertices[j] = Vertex {
+                    position: {
+                        let v = model.vertices[face.points[j].vertices_index];
+                        // this simplistic rendering code assumes that the vertice coordinates are
+                        // between -1 and 1, so confirm that assumption
+                        debug_assert!(
+                            -1.0 <= v.pos.x && v.pos.x <= 1.0,
+                            "x coordinate out of range: {}",
+                            v.pos.x
+                        );
+                        debug_assert!(
+                            -1.0 <= v.pos.y && v.pos.y <= 1.0,
+                            "y coordinate out of range: {}",
+                            v.pos.y
+                        );
+                        v.pos
+                    },
                     uv: model.texture_coords[face.points[j].uv_index],
                     normal: model.vertex_normals[face.points[j].normals_index],
-                });
-                screen_coords[j] = vertex_shader_output.pos;
-                texture_coords[j] = vertex_shader_output.uv;
-                vertex_intensity[j] = vertex_shader_output.light_intensity;
+                }
             }
 
-            self.triangle_shader(screen_coords, shader, texture_coords, vertex_intensity);
+            let screen_coords = shader.vertex(vertices);
+
+            self.triangle_shader(screen_coords, shader);
         }
     }
 
-    pub fn triangle_shader(
-        &mut self,
-        pts: [Vec3; 3],
-        shader: &dyn Shader,
-        varying_uv: [Vec2; 3],
-        light_intensity: [f32; 3],
-    ) {
+    pub fn triangle_shader(&mut self, pts: [Vec3; 3], shader: &mut dyn Shader) {
         let mut bboxmin = Vec2::new((self.width() - 1) as f32, (self.height() - 1) as f32);
         let mut bboxmax = Vec2::new(0.0, 0.0);
         let clamp = Vec2::new((self.width() - 1) as f32, (self.height() - 1) as f32);
@@ -182,7 +162,7 @@ impl Canvas {
                 }
                 let z_buf_for_pixel = self.z_buffer_at(i, j);
                 if *z_buf_for_pixel < pixel_z {
-                    let maybe_color = shader.fragment(bc_screen, varying_uv, light_intensity);
+                    let maybe_color = shader.fragment(bc_screen);
                     if let Some(color) = maybe_color {
                         *z_buf_for_pixel = pixel_z;
                         *self.pixel(i, j) = color;

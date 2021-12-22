@@ -9,6 +9,6 @@ mod model;
 
 pub use colors::*;
 
-pub use canvas::{Canvas, Shader, VertexShaderInput, VertexShaderOutput};
+pub use canvas::{Canvas, Shader, Vertex};
 pub use canvas_legacy::ModelShading;
-pub use model::{Face, Model, ModelInput, Texture, Vertex};
+pub use model::{Face, Model, ModelInput, Texture};
