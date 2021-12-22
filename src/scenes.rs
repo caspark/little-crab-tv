@@ -1,7 +1,10 @@
 use anyhow::Result;
 use glam::{IVec2, Mat4, Vec3};
 
-use crab_tv::{Canvas, Model, ModelShading, BLUE, CYAN, GREEN, RED, WHITE};
+use crab_tv::{
+    look_at_transform, viewport_transform, Canvas, Model, ModelShading, BLUE, CYAN, GREEN, RED,
+    WHITE,
+};
 
 #[derive(
     Copy,
@@ -164,32 +167,6 @@ pub fn render_scene(
     image.flip_y();
 
     Ok(())
-}
-
-fn look_at_transform(eye: Vec3, center: Vec3, up: Vec3) -> Mat4 {
-    let z = (eye - center).normalize();
-    let x = up.cross(z).normalize();
-    let y = z.cross(x).normalize();
-    let mut minv = Mat4::IDENTITY;
-    let mut tr = Mat4::IDENTITY;
-    for i in 0..3 {
-        minv.col_mut(i)[0] = x[i];
-        minv.col_mut(i)[1] = y[i];
-        minv.col_mut(i)[2] = z[i];
-        tr.col_mut(3)[i] = -center[i];
-    }
-    minv * tr
-}
-
-// viewport matrix resizes/repositions the result to fit on screen
-fn viewport_transform(x: f32, y: f32, w: f32, h: f32) -> Mat4 {
-    let depth = 255.0;
-    Mat4::from_cols(
-        [w / 2.0, 0.0, 0.0, 0.0].into(),
-        [0.0, h / 2.0, 0.0, 0.0].into(),
-        [0.0, 0.0, depth / 2.0, 0.0].into(),
-        [x + w / 2.0, y + h / 2.0, depth / 2.0, 1.0].into(),
-    )
 }
 
 #[cfg(test)]
