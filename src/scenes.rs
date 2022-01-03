@@ -31,11 +31,11 @@ pub enum RenderScene {
     ModelTextured,
     ModelPerspective,
     ModelGouraud,
-    CameraMovable,
-    ShaderRefactor,
-    IntensitiesBucketed,
-    NormalTextureGlobalOnly,
-    WithGlobalNormals,
+    GouraudWithMovableCamera,
+    GouraudShaderRefactor,
+    GouraudIntensitiesBucketed,
+    GouraudNormalAsDiffuse,
+    NormalShader,
 }
 
 pub fn render_scene(
@@ -148,13 +148,13 @@ pub fn render_scene(
             ModelShading::Gouraud,
             Some(perspective_projection_transform),
         ),
-        RenderScene::CameraMovable => image.model_fixed_function(
+        RenderScene::GouraudWithMovableCamera => image.model_fixed_function(
             &model,
             light_dir,
             ModelShading::Gouraud,
             Some(perspective_projection_transform * model_view_transform),
         ),
-        RenderScene::ShaderRefactor => {
+        RenderScene::GouraudShaderRefactor => {
             let mut shader = crate::shaders::GouraudShader::new(
                 viewport,
                 uniform_m,
@@ -165,7 +165,7 @@ pub fn render_scene(
 
             image.model_shader(&model, &mut shader);
         }
-        RenderScene::IntensitiesBucketed => {
+        RenderScene::GouraudIntensitiesBucketed => {
             let mut shader = crate::shaders::GouraudShader::new(
                 viewport,
                 uniform_m,
@@ -176,7 +176,7 @@ pub fn render_scene(
 
             image.model_shader(&model, &mut shader);
         }
-        RenderScene::NormalTextureGlobalOnly => {
+        RenderScene::GouraudNormalAsDiffuse => {
             let mut shader = crate::shaders::GouraudShader::new(
                 viewport,
                 uniform_m,
@@ -187,7 +187,7 @@ pub fn render_scene(
 
             image.model_shader(&model, &mut shader);
         }
-        RenderScene::WithGlobalNormals => {
+        RenderScene::NormalShader => {
             let mut shader = crate::shaders::NormalShader::new(
                 viewport,
                 uniform_m,
