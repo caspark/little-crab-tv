@@ -132,6 +132,7 @@ pub struct NormalShader<'t> {
     uniform_mit: Mat4,
     light_dir: Vec3,
     diffuse_texture: &'t Texture,
+    /// normal texture must be in global coordinates
     normal_texture: &'t Texture,
 }
 
@@ -141,7 +142,7 @@ impl<'t> NormalShader<'t> {
         uniform_m: Mat4,
         light_dir: Vec3,
         diffuse_texture: &'t Texture,
-        normal_texture: &'t Texture,
+        normal_texture_global: &'t Texture,
     ) -> NormalShader<'t> {
         Self {
             viewport,
@@ -149,7 +150,7 @@ impl<'t> NormalShader<'t> {
             uniform_mit: uniform_m.inverse().transpose(),
             light_dir,
             diffuse_texture,
-            normal_texture,
+            normal_texture: normal_texture_global,
         }
     }
 }
@@ -199,6 +200,7 @@ pub struct PhongShader<'t> {
     uniform_mit: Mat4,
     light_dir: Vec3,
     diffuse_texture: &'t Texture,
+    /// normal texture must be in global coordinates
     normal_texture: &'t Texture,
     specular_texture: &'t Texture,
 }
@@ -209,7 +211,7 @@ impl<'t> PhongShader<'t> {
         uniform_m: Mat4,
         light_dir: Vec3,
         diffuse_texture: &'t Texture,
-        normal_texture: &'t Texture,
+        normal_texture_global: &'t Texture,
         specular_texture: &'t Texture,
     ) -> PhongShader<'t> {
         Self {
@@ -218,7 +220,7 @@ impl<'t> PhongShader<'t> {
             uniform_mit: uniform_m.inverse().transpose(),
             light_dir,
             diffuse_texture,
-            normal_texture,
+            normal_texture: normal_texture_global,
             specular_texture,
         }
     }
