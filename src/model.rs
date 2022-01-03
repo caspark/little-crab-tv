@@ -61,6 +61,8 @@ impl Texture {
 pub struct ModelInput {
     model: PathBuf,
     diffuse_texture: PathBuf,
+    normal_texture_global: PathBuf,
+    normal_texture_darboux: PathBuf,
 }
 
 impl ModelInput {}
@@ -72,6 +74,10 @@ pub struct Model {
     pub faces: Vec<Face>,
     pub texture_coords: Vec<Vec2>,
     pub diffuse_texture: Texture,
+    /// Normal texture in global/cartesian coordinate system - should be mostly multicolor
+    pub normal_texture_global: Texture,
+    /// Normal texture in darboux frame (tangent space) - should be mostly blue
+    pub normal_texture_darboux: Texture,
 }
 
 impl Model {
@@ -87,11 +93,19 @@ impl Model {
         }
 
         let diffuse_texture = Texture::validate(model.with_extension("diffuse.png").as_ref())
-            .context("Loading diffuse texture failed")?;
+            .context("Validating diffuse texture failed")?;
+        let normal_texture_global =
+            Texture::validate(model.with_extension("normals_global.png").as_ref())
+                .context("Validating (global space) normal texture failed")?;
+        let normal_texture_darboux =
+            Texture::validate(model.with_extension("normals_darboux.png").as_ref())
+                .context("Validating (darboux frame) normal texture failed")?;
 
         Ok(ModelInput {
             model: model.to_owned(),
             diffuse_texture,
+            normal_texture_global,
+            normal_texture_darboux,
         })
     }
 
@@ -202,6 +216,10 @@ impl Model {
 
         let diffuse_texture = Texture::load_from_file(&input.diffuse_texture)
             .context("Loading diffuse texture failed")?;
+        let normal_texture_global = Texture::load_from_file(&input.normal_texture_global)
+            .context("Loading (global space) normal texture failed")?;
+        let normal_texture_darboux = Texture::load_from_file(&input.normal_texture_darboux)
+            .context("Loading (darboux frame) normal texture failed")?;
 
         Ok(Self {
             vertices,
@@ -209,6 +227,8 @@ impl Model {
             faces,
             texture_coords,
             diffuse_texture,
+            normal_texture_global,
+            normal_texture_darboux,
         })
     }
 }
