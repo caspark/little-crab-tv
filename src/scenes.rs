@@ -32,8 +32,10 @@ pub enum RenderScene {
     ModelPerspective,
     ModelGouraud,
     CameraMovable,
-    ShaderGouraud,
-    ShaderIntensitiesBucketed,
+    ShaderRefactor,
+    IntensitiesBucketed,
+    NormalTextureGlobalOnly,
+    WithGlobalNormals,
 }
 
 pub fn render_scene(
@@ -48,6 +50,13 @@ pub fn render_scene(
 ) -> Result<()> {
     println!("Rendering scene: {}", scene);
 
+    let viewport = viewport_transform(
+        image.width() as f32 / 8.0,
+        image.height() as f32 / 8.0,
+        image.width() as f32 * 3.0 / 4.0,
+        image.height() as f32 * 3.0 / 4.0,
+    );
+
     // projection matrix applies perspective correction
     let perspective_projection_transform = Mat4::from_cols(
         [1.0, 0.0, 0.0, 0.0].into(),
@@ -55,6 +64,10 @@ pub fn render_scene(
         [0.0, 0.0, 1.0, -1.0 / camera_distance].into(),
         [0.0, 0.0, 0.0, 1.0].into(),
     );
+
+    let model_view_transform = look_at_transform(camera_look_from, camera_look_at, camera_up);
+
+    let uniform_m = perspective_projection_transform * model_view_transform;
 
     match scene {
         RenderScene::FivePixels => {
@@ -135,28 +148,16 @@ pub fn render_scene(
             ModelShading::Gouraud,
             Some(perspective_projection_transform),
         ),
-        RenderScene::CameraMovable => {
-            let model_view_transform =
-                look_at_transform(camera_look_from, camera_look_at, camera_up);
-            image.model_fixed_function(
-                &model,
-                light_dir,
-                ModelShading::Gouraud,
-                Some(perspective_projection_transform * model_view_transform),
-            )
-        }
-        RenderScene::ShaderGouraud => {
-            let viewport = viewport_transform(
-                image.width() as f32 / 8.0,
-                image.height() as f32 / 8.0,
-                image.width() as f32 * 3.0 / 4.0,
-                image.height() as f32 * 3.0 / 4.0,
-            );
-            let model_view_transform =
-                look_at_transform(camera_look_from, camera_look_at, camera_up);
-
+        RenderScene::CameraMovable => image.model_fixed_function(
+            &model,
+            light_dir,
+            ModelShading::Gouraud,
+            Some(perspective_projection_transform * model_view_transform),
+        ),
+        RenderScene::ShaderRefactor => {
             let mut shader = crate::shaders::GouraudShader::new(
-                viewport * perspective_projection_transform * model_view_transform,
+                viewport,
+                uniform_m,
                 light_dir,
                 Some(&model.diffuse_texture),
                 false,
@@ -164,21 +165,35 @@ pub fn render_scene(
 
             image.model_shader(&model, &mut shader);
         }
-        RenderScene::ShaderIntensitiesBucketed => {
-            let viewport = viewport_transform(
-                image.width() as f32 / 8.0,
-                image.height() as f32 / 8.0,
-                image.width() as f32 * 3.0 / 4.0,
-                image.height() as f32 * 3.0 / 4.0,
-            );
-            let model_view_transform =
-                look_at_transform(camera_look_from, camera_look_at, camera_up);
-
+        RenderScene::IntensitiesBucketed => {
             let mut shader = crate::shaders::GouraudShader::new(
-                viewport * perspective_projection_transform * model_view_transform,
+                viewport,
+                uniform_m,
                 light_dir,
                 Some(&model.diffuse_texture),
                 true,
+            );
+
+            image.model_shader(&model, &mut shader);
+        }
+        RenderScene::NormalTextureGlobalOnly => {
+            let mut shader = crate::shaders::GouraudShader::new(
+                viewport,
+                uniform_m,
+                light_dir,
+                Some(&model.normal_texture_global),
+                false,
+            );
+
+            image.model_shader(&model, &mut shader);
+        }
+        RenderScene::WithGlobalNormals => {
+            let mut shader = crate::shaders::NormalShader::new(
+                viewport,
+                uniform_m,
+                light_dir,
+                &model.diffuse_texture,
+                &model.normal_texture_global,
             );
 
             image.model_shader(&model, &mut shader);

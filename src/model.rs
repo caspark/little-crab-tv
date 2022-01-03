@@ -53,7 +53,8 @@ impl Texture {
     pub fn get_pixel(&self, x: usize, y: usize) -> RGB8 {
         debug_assert!(x < self.width);
         debug_assert!(y < self.height);
-        self.data[y * self.width + x]
+
+        self.data[(self.height - y as usize) * self.width + x as usize]
     }
 }
 

@@ -42,12 +42,12 @@ pub(crate) fn yolo_compare<N: std::cmp::PartialOrd>(a: &N, b: &N) -> std::cmp::O
 }
 
 #[inline]
-pub(crate) fn yolo_min<N: std::cmp::PartialOrd>(a: N, b: N) -> N {
+pub fn yolo_min<N: std::cmp::PartialOrd>(a: N, b: N) -> N {
     std::cmp::min_by(a, b, yolo_compare)
 }
 
 #[inline]
-pub(crate) fn yolo_max<N: std::cmp::PartialOrd>(a: N, b: N) -> N {
+pub fn yolo_max<N: std::cmp::PartialOrd>(a: N, b: N) -> N {
     std::cmp::max_by(a, b, yolo_compare)
 }
 
