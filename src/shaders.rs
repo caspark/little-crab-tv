@@ -95,7 +95,7 @@ impl Shader<GouraudShaderState> for GouraudShader<'_> {
         };
 
         let unlit_color = if let Some(ref tex) = self.diffuse_texture {
-            tex.get_pixel(uv.x as usize, uv.y as usize)
+            tex.get_pixel(uv)
         } else {
             crab_tv::WHITE
         };
@@ -120,7 +120,7 @@ fn bucket_intensity(intensity: f32) -> f32 {
     }
 }
 
-type NormalShaderState = [Vec2; 3];
+type VertexUVs = [Vec2; 3];
 
 /// A shader that handles normals correctly based on a global normal map
 #[derive(Clone, Debug)]
@@ -154,14 +154,13 @@ impl<'t> NormalShader<'t> {
     }
 }
 
-impl Shader<NormalShaderState> for NormalShader<'_> {
-    fn vertex(&self, input: [Vertex; 3]) -> ([Vec3; 3], NormalShaderState) {
+impl Shader<VertexUVs> for NormalShader<'_> {
+    fn vertex(&self, input: [Vertex; 3]) -> ([Vec3; 3], VertexUVs) {
         let mut varying_pos = [Vec3::ZERO; 3];
         let mut varying_uv = [Vec2::ZERO; 3];
         for (i, vert) in input.iter().enumerate() {
             varying_pos[i] = (self.viewport * self.uniform_m).project_point3(vert.position);
 
-            // Transform the vertex texture coordinates based on the texture we have
             varying_uv[i] = Vec2::new(
                 vert.uv.x * self.diffuse_texture.width as f32,
                 vert.uv.y * self.diffuse_texture.height as f32,
@@ -171,27 +170,106 @@ impl Shader<NormalShaderState> for NormalShader<'_> {
         (varying_pos, varying_uv)
     }
 
-    fn fragment(&self, barycentric_coords: Vec3, varying_uv: &NormalShaderState) -> Option<RGB8> {
+    fn fragment(&self, barycentric_coords: Vec3, varying_uv: &VertexUVs) -> Option<RGB8> {
         let uv = varying_uv[0] * barycentric_coords[0]
             + varying_uv[1] * barycentric_coords[1]
             + varying_uv[2] * barycentric_coords[2];
 
-        let n = {
-            let pixel = self
-                .normal_texture
-                .get_pixel(uv.x as usize, uv.y as usize)
-                // now normalize to [-1.0, 1.0]
-                .map(|comp| comp as f32 / 255.0 * 2.0 - 1.0);
-            // correct normals for the affine transformation done in vertex shader
-            self.uniform_mit
-                .project_point3(Vec3::new(pixel.r, pixel.g, pixel.b))
-                .normalize()
-        };
+        // correct normals for the affine transformation done in vertex shader
+        let n = self
+            .uniform_mit
+            .project_point3(self.normal_texture.get_normal(uv))
+            .normalize();
         let l = self.uniform_m.project_point3(self.light_dir).normalize();
-        let weighted_light_intensity = crab_tv::yolo_max(0.0, n.dot(l));
+        let intensity = crab_tv::yolo_max(0.0, n.dot(l));
 
-        let unlit_color = self.diffuse_texture.get_pixel(uv.x as usize, uv.y as usize);
+        let unlit_color = self.diffuse_texture.get_pixel(uv);
 
-        Some(unlit_color.map(|comp| (comp as f32 * weighted_light_intensity) as u8))
+        Some(unlit_color.map(|comp| (comp as f32 * intensity) as u8))
+    }
+}
+
+/// A shader that handles normals correctly based on a global normal map
+#[derive(Clone, Debug)]
+pub struct PhongShader<'t> {
+    viewport: Mat4,
+    /// projection matrix * modelview matrix
+    uniform_m: Mat4,
+    /// projection matrix * modelview matrix then inverted & transposed, for correcting normals
+    uniform_mit: Mat4,
+    light_dir: Vec3,
+    diffuse_texture: &'t Texture,
+    normal_texture: &'t Texture,
+    specular_texture: &'t Texture,
+}
+
+impl<'t> PhongShader<'t> {
+    pub fn new(
+        viewport: Mat4,
+        uniform_m: Mat4,
+        light_dir: Vec3,
+        diffuse_texture: &'t Texture,
+        normal_texture: &'t Texture,
+        specular_texture: &'t Texture,
+    ) -> PhongShader<'t> {
+        Self {
+            viewport,
+            uniform_m,
+            uniform_mit: uniform_m.inverse().transpose(),
+            light_dir,
+            diffuse_texture,
+            normal_texture,
+            specular_texture,
+        }
+    }
+}
+
+impl Shader<VertexUVs> for PhongShader<'_> {
+    fn vertex(&self, input: [Vertex; 3]) -> ([Vec3; 3], VertexUVs) {
+        let mut varying_pos = [Vec3::ZERO; 3];
+        let mut varying_uv = [Vec2::ZERO; 3];
+        for (i, vert) in input.iter().enumerate() {
+            varying_pos[i] = (self.viewport * self.uniform_m).project_point3(vert.position);
+
+            varying_uv[i] = Vec2::new(
+                vert.uv.x * self.diffuse_texture.width as f32,
+                vert.uv.y * self.diffuse_texture.height as f32,
+            );
+        }
+
+        (varying_pos, varying_uv)
+    }
+
+    fn fragment(&self, barycentric_coords: Vec3, varying_uv: &VertexUVs) -> Option<RGB8> {
+        let uv = varying_uv[0] * barycentric_coords[0]
+            + varying_uv[1] * barycentric_coords[1]
+            + varying_uv[2] * barycentric_coords[2];
+
+        let n = self
+            .uniform_mit
+            .project_point3(self.normal_texture.get_normal(uv))
+            .normalize();
+        let l = self.uniform_m.project_point3(self.light_dir).normalize();
+        let r = (n * (n.dot(l) * 2.0) - l).normalize(); // reflected light
+
+        let unlit_color = self.diffuse_texture.get_pixel(uv);
+
+        // calculate lighting intensity for this pixel
+        let ambient_intensity = 1.0;
+        let diffuse_intensity = crab_tv::yolo_max(0.0, n.dot(l));
+        let specular_intensity =
+            crab_tv::yolo_max(0.0, r.z).powf(self.specular_texture.get_specular(uv));
+
+        // phong shading weights of each light component
+        let ambient_weight = 5.0;
+        let diffuse_weight = 1.0;
+        let specular_weight = 0.6;
+
+        Some(unlit_color.map(|comp| {
+            (ambient_weight * ambient_intensity
+                + comp as f32
+                    * (diffuse_weight * diffuse_intensity + specular_weight * specular_intensity))
+                as u8
+        }))
     }
 }

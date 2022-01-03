@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 use anyhow::{anyhow, bail, Context, Result};
 use derive_more::Constructor;
 use glam::{Vec2, Vec3};
-use rgb::RGB8;
+use rgb::{ComponentMap, RGB8};
 
 #[derive(Clone, Copy, Debug, PartialEq, Constructor)]
 pub struct Vertex {
@@ -50,11 +50,27 @@ impl Texture {
         ))
     }
 
-    pub fn get_pixel(&self, x: usize, y: usize) -> RGB8 {
+    pub fn get_pixel(&self, uv: Vec2) -> RGB8 {
+        let x = uv.x as usize;
+        let y = uv.y as usize;
         debug_assert!(x < self.width);
         debug_assert!(y < self.height);
 
         self.data[(self.height - y as usize) * self.width + x as usize]
+    }
+
+    pub fn get_normal(&self, uv: Vec2) -> Vec3 {
+        let p = self
+            .get_pixel(uv)
+            // now normalize to [-1.0, 1.0]
+            .map(|comp| comp as f32 / 255.0 * 2.0 - 1.0);
+        Vec3::new(p.r, p.g, p.b)
+    }
+
+    pub fn get_specular(&self, uv: Vec2) -> f32 {
+        // we assume that each of the rgb channels have the same data and arbitrarily pick R to read
+        // the specular from
+        self.get_pixel(uv).r as f32
     }
 }
 
@@ -64,6 +80,7 @@ pub struct ModelInput {
     diffuse_texture: PathBuf,
     normal_texture_global: PathBuf,
     normal_texture_darboux: PathBuf,
+    specular_texture: PathBuf,
 }
 
 impl ModelInput {}
@@ -79,6 +96,7 @@ pub struct Model {
     pub normal_texture_global: Texture,
     /// Normal texture in darboux frame (tangent space) - should be mostly blue
     pub normal_texture_darboux: Texture,
+    pub specular_texture: Texture,
 }
 
 impl Model {
@@ -101,12 +119,15 @@ impl Model {
         let normal_texture_darboux =
             Texture::validate(model.with_extension("normals_darboux.png").as_ref())
                 .context("Validating (darboux frame) normal texture failed")?;
+        let specular_texture = Texture::validate(model.with_extension("specular.png").as_ref())
+            .context("Validating specular texture failed")?;
 
         Ok(ModelInput {
             model: model.to_owned(),
             diffuse_texture,
             normal_texture_global,
             normal_texture_darboux,
+            specular_texture,
         })
     }
 
@@ -221,6 +242,8 @@ impl Model {
             .context("Loading (global space) normal texture failed")?;
         let normal_texture_darboux = Texture::load_from_file(&input.normal_texture_darboux)
             .context("Loading (darboux frame) normal texture failed")?;
+        let specular_texture = Texture::load_from_file(&input.specular_texture)
+            .context("Loading specular texture failed")?;
 
         Ok(Self {
             vertices,
@@ -230,6 +253,7 @@ impl Model {
             diffuse_texture,
             normal_texture_global,
             normal_texture_darboux,
+            specular_texture,
         })
     }
 }

@@ -36,6 +36,7 @@ pub enum RenderScene {
     GouraudIntensitiesBucketed,
     GouraudNormalAsDiffuse,
     NormalShader,
+    PhongShader,
 }
 
 pub fn render_scene(
@@ -194,6 +195,18 @@ pub fn render_scene(
                 light_dir,
                 &model.diffuse_texture,
                 &model.normal_texture_global,
+            );
+
+            image.model_shader(&model, &mut shader);
+        }
+        RenderScene::PhongShader => {
+            let mut shader = crate::shaders::PhongShader::new(
+                viewport,
+                uniform_m,
+                light_dir,
+                &model.diffuse_texture,
+                &model.normal_texture_global,
+                &model.specular_texture,
             );
 
             image.model_shader(&model, &mut shader);
