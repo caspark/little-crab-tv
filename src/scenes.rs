@@ -33,6 +33,7 @@ pub enum RenderScene {
     ModelGouraud,
     CameraMovable,
     ShaderGouraud,
+    ShaderIntensitiesBucketed,
 }
 
 pub fn render_scene(
@@ -159,6 +160,25 @@ pub fn render_scene(
                 light_dir,
                 Some(&model.diffuse_texture),
                 false,
+            );
+
+            image.model_shader(&model, &mut shader);
+        }
+        RenderScene::ShaderIntensitiesBucketed => {
+            let viewport = viewport_transform(
+                image.width() as f32 / 8.0,
+                image.height() as f32 / 8.0,
+                image.width() as f32 * 3.0 / 4.0,
+                image.height() as f32 * 3.0 / 4.0,
+            );
+            let model_view_transform =
+                look_at_transform(camera_look_from, camera_look_at, camera_up);
+
+            let mut shader = crate::shaders::GouraudShader::new(
+                viewport * perspective_projection_transform * model_view_transform,
+                light_dir,
+                Some(&model.diffuse_texture),
+                true,
             );
 
             image.model_shader(&model, &mut shader);
