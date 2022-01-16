@@ -1,4 +1,4 @@
-use glam::{IVec2, Mat4, Vec2, Vec3};
+use glam::{IVec2, Mat3, Mat4, Vec2, Vec3};
 
 pub(crate) fn barycentric_coords_2d(pts: &[IVec2], p: IVec2) -> Vec3 {
     let u: Vec3 = Vec3::new(
@@ -28,6 +28,24 @@ pub(crate) fn barycentric_coords_3d(pts: &[Vec3], p: Vec2) -> Vec3 {
         pts[2][1] - pts[0][1],
         pts[1][1] - pts[0][1],
         pts[0][1] - p[1],
+    ));
+
+    if u[2].abs() < 1.0 {
+        return Vec3::new(-1.0, 1.0, 1.0);
+    }
+    return Vec3::new(1.0 - (u.x + u.y) / u.z, u.y / u.z, u.x / u.z);
+}
+
+pub(crate) fn barycentric_coords_3d_matrix(pts: Mat3, p: Vec2) -> Vec3 {
+    let u: Vec3 = Vec3::new(
+        pts.col(2)[0] - pts.col(0)[0],
+        pts.col(1)[0] - pts.col(0)[0],
+        pts.col(0)[0] - p[0],
+    )
+    .cross(Vec3::new(
+        pts.col(2)[1] - pts.col(0)[1],
+        pts.col(1)[1] - pts.col(0)[1],
+        pts.col(0)[1] - p[1],
     ));
 
     if u[2].abs() < 1.0 {

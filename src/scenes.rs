@@ -38,6 +38,7 @@ pub enum RenderScene {
     NormalShader,
     PhongShader,
     ShadowBuffer,
+    Shadows,
 }
 
 pub fn render_scene(
@@ -157,7 +158,7 @@ pub fn render_scene(
             Some(perspective_projection_transform * model_view_transform),
         ),
         RenderScene::GouraudShaderRefactor => {
-            let mut shader = crate::shaders::GouraudShader::new(
+            let shader = crate::shaders::GouraudShader::new(
                 viewport,
                 uniform_m,
                 light_dir,
@@ -165,10 +166,10 @@ pub fn render_scene(
                 false,
             );
 
-            image.model_shader(&model, &mut shader);
+            image.model_shader(&model, &shader);
         }
         RenderScene::GouraudIntensitiesBucketed => {
-            let mut shader = crate::shaders::GouraudShader::new(
+            let shader = crate::shaders::GouraudShader::new(
                 viewport,
                 uniform_m,
                 light_dir,
@@ -176,10 +177,10 @@ pub fn render_scene(
                 true,
             );
 
-            image.model_shader(&model, &mut shader);
+            image.model_shader(&model, &shader);
         }
         RenderScene::GouraudNormalAsDiffuse => {
-            let mut shader = crate::shaders::GouraudShader::new(
+            let shader = crate::shaders::GouraudShader::new(
                 viewport,
                 uniform_m,
                 light_dir,
@@ -187,10 +188,10 @@ pub fn render_scene(
                 false,
             );
 
-            image.model_shader(&model, &mut shader);
+            image.model_shader(&model, &shader);
         }
         RenderScene::NormalShader => {
-            let mut shader = crate::shaders::NormalShader::new(
+            let shader = crate::shaders::NormalShader::new(
                 viewport,
                 uniform_m,
                 light_dir,
@@ -198,10 +199,10 @@ pub fn render_scene(
                 &model.normal_texture_global,
             );
 
-            image.model_shader(&model, &mut shader);
+            image.model_shader(&model, &shader);
         }
         RenderScene::PhongShader => {
-            let mut shader = crate::shaders::PhongShader::new(
+            let shader = crate::shaders::PhongShader::new(
                 viewport,
                 uniform_m,
                 light_dir,
@@ -210,17 +211,38 @@ pub fn render_scene(
                 &model.specular_texture,
             );
 
-            image.model_shader(&model, &mut shader);
+            image.model_shader(&model, &shader);
         }
         RenderScene::ShadowBuffer => {
-            let mut shader = crate::shaders::DepthShader::new(
+            let shader = crate::shaders::DepthShader::new(
                 viewport,
                 // NB: looking from the light position so that framebuffer is filled with shadow buffer
-                perspective_projection_transform
-                    * look_at_transform(light_dir, camera_look_at, camera_up),
+                look_at_transform(light_dir, camera_look_at, camera_up),
             );
 
-            image.model_shader(&model, &mut shader);
+            image.model_shader(&model, &shader);
+        }
+        RenderScene::Shadows => {
+            let mut shadow_buffer = image.clone();
+
+            let shadow_buffer_shader = crate::shaders::DepthShader::new(
+                viewport,
+                // NB: looking from the light position so that framebuffer is filled with shadow buffer
+                look_at_transform(light_dir, camera_look_at, camera_up),
+            );
+
+            shadow_buffer.model_shader(&model, &shadow_buffer_shader);
+
+            let shader = crate::shaders::PhongShader::new(
+                viewport,
+                uniform_m,
+                light_dir,
+                &model.diffuse_texture,
+                &model.normal_texture_global,
+                &model.specular_texture,
+            );
+
+            image.model_shader(&model, &shader);
         }
     }
 

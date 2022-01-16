@@ -36,12 +36,12 @@ impl<'t> GouraudShader<'t> {
 }
 
 impl Shader<GouraudShaderState> for GouraudShader<'_> {
-    fn vertex(&self, input: [Vertex; 3]) -> ([Vec3; 3], GouraudShaderState) {
-        let mut varying_pos = [Vec3::ZERO; 3];
+    fn vertex(&self, input: [Vertex; 3]) -> (Mat3, GouraudShaderState) {
+        let mut varying_pos = Mat3::ZERO;
         let mut varying_uv = [Vec2::ZERO; 3];
         let mut varying_light_intensity = [0f32; 3];
         for (i, vert) in input.iter().enumerate() {
-            varying_pos[i] = {
+            *varying_pos.col_mut(i) = {
                 // Transform the vertex position
                 // step 1 - embed into 4D space by converting to homogeneous coordinates
                 let mut vec4: Vec4 = (vert.position, 1.0).into();
@@ -156,11 +156,12 @@ impl<'t> NormalShader<'t> {
 }
 
 impl Shader<VertexUVs> for NormalShader<'_> {
-    fn vertex(&self, input: [Vertex; 3]) -> ([Vec3; 3], VertexUVs) {
-        let mut varying_pos = [Vec3::ZERO; 3];
+    fn vertex(&self, input: [Vertex; 3]) -> (Mat3, VertexUVs) {
+        let mut varying_pos = Mat3::ZERO;
         let mut varying_uv = [Vec2::ZERO; 3];
         for (i, vert) in input.iter().enumerate() {
-            varying_pos[i] = (self.viewport * self.uniform_m).project_point3(vert.position);
+            *varying_pos.col_mut(i) =
+                (self.viewport * self.uniform_m).project_point3(vert.position);
 
             varying_uv[i] = Vec2::new(
                 vert.uv.x * self.diffuse_texture.width as f32,
@@ -227,11 +228,12 @@ impl<'t> PhongShader<'t> {
 }
 
 impl Shader<VertexUVs> for PhongShader<'_> {
-    fn vertex(&self, input: [Vertex; 3]) -> ([Vec3; 3], VertexUVs) {
-        let mut varying_pos = [Vec3::ZERO; 3];
+    fn vertex(&self, input: [Vertex; 3]) -> (Mat3, VertexUVs) {
+        let mut varying_tri = Mat3::ZERO;
         let mut varying_uv = [Vec2::ZERO; 3];
         for (i, vert) in input.iter().enumerate() {
-            varying_pos[i] = (self.viewport * self.uniform_m).project_point3(vert.position);
+            *varying_tri.col_mut(i) =
+                (self.viewport * self.uniform_m).project_point3(vert.position);
 
             varying_uv[i] = Vec2::new(
                 vert.uv.x * self.diffuse_texture.width as f32,
@@ -239,7 +241,7 @@ impl Shader<VertexUVs> for PhongShader<'_> {
             );
         }
 
-        (varying_pos, varying_uv)
+        (varying_tri, varying_uv)
     }
 
     fn fragment(&self, barycentric_coords: Vec3, varying_uv: &VertexUVs) -> Option<RGB8> {
@@ -296,13 +298,14 @@ impl DepthShader {
 }
 
 impl Shader<DepthVaryingTri> for DepthShader {
-    fn vertex(&self, input: [Vertex; 3]) -> ([Vec3; 3], DepthVaryingTri) {
-        let mut varying_pos = [Vec3::ZERO; 3];
+    fn vertex(&self, input: [Vertex; 3]) -> (Mat3, DepthVaryingTri) {
+        let mut varying_pos = Mat3::ZERO;
         let mut varying_tri = Mat3::ZERO;
         for (i, vert) in input.iter().enumerate() {
-            varying_pos[i] = (self.viewport * self.uniform_m).project_point3(vert.position);
+            *varying_pos.col_mut(i) =
+                (self.viewport * self.uniform_m).project_point3(vert.position);
 
-            *varying_tri.col_mut(i) = varying_pos[i];
+            *varying_tri.col_mut(i) = varying_pos.col(i);
         }
 
         (varying_pos, varying_tri)

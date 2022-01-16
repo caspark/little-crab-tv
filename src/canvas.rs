@@ -1,4 +1,4 @@
-use glam::{Vec2, Vec3};
+use glam::{Mat3, Vec2, Vec3};
 use rgb::RGB8;
 
 use crate::{
@@ -14,7 +14,7 @@ pub struct Vertex {
 }
 
 pub trait Shader<S> {
-    fn vertex(&self, triangle: [Vertex; 3]) -> ([Vec3; 3], S);
+    fn vertex(&self, triangle: [Vertex; 3]) -> (Mat3, S);
     fn fragment(&self, barycentric_coords: Vec3, state: &S) -> Option<RGB8>;
 }
 
@@ -105,7 +105,7 @@ impl Canvas {
         }
     }
 
-    pub fn model_shader<S>(&mut self, model: &Model, shader: &mut dyn Shader<S>) {
+    pub fn model_shader<S>(&mut self, model: &Model, shader: &dyn Shader<S>) {
         for face in model.faces.iter() {
             let mut vertices = [Vertex::default(); 3];
             for j in 0..3 {
@@ -137,28 +137,28 @@ impl Canvas {
         }
     }
 
-    pub fn triangle_shader<S>(&mut self, pts: [Vec3; 3], shader: &dyn Shader<S>, shader_state: S) {
+    pub fn triangle_shader<S>(&mut self, pts: Mat3, shader: &dyn Shader<S>, shader_state: S) {
         let mut bboxmin = Vec2::new((self.width() - 1) as f32, (self.height() - 1) as f32);
         let mut bboxmax = Vec2::new(0.0, 0.0);
         let clamp = Vec2::new((self.width() - 1) as f32, (self.height() - 1) as f32);
 
         for i in 0..3 {
             for j in 0..2 {
-                bboxmin[j] = yolo_max(0.0, yolo_min(bboxmin[j], pts[i][j]));
-                bboxmax[j] = yolo_min(clamp[j], yolo_max(bboxmax[j], pts[i][j]));
+                bboxmin[j] = yolo_max(0.0, yolo_min(bboxmin[j], pts.col(i)[j]));
+                bboxmax[j] = yolo_min(clamp[j], yolo_max(bboxmax[j], pts.col(i)[j]));
             }
         }
 
         for i in (bboxmin.x as i32)..=(bboxmax.x as i32) {
             for j in (bboxmin.y as i32)..=(bboxmax.y as i32) {
                 let p = Vec2::new(i as f32, j as f32);
-                let bc_screen = maths::barycentric_coords_3d(&pts, p);
+                let bc_screen = maths::barycentric_coords_3d_matrix(pts, p);
                 if bc_screen.x < 0.0 || bc_screen.y < 0.0 || bc_screen.z < 0.0 {
                     continue;
                 }
                 let mut pixel_z = 0.0;
                 for k in 0..3 {
-                    pixel_z += pts[k][2] * bc_screen[k];
+                    pixel_z += pts.col(k)[2] * bc_screen[k];
                 }
                 let z_buf_for_pixel = self.z_buffer_at(i, j);
                 if *z_buf_for_pixel < pixel_z {
