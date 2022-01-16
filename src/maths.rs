@@ -66,13 +66,14 @@ pub fn look_at_transform(eye: Vec3, center: Vec3, up: Vec3) -> Mat4 {
     minv * tr
 }
 
+pub const DEPTH_MAX: f32 = 255.0;
+
 // viewport matrix resizes/repositions the result to fit on screen
 pub fn viewport_transform(x: f32, y: f32, w: f32, h: f32) -> Mat4 {
-    let depth = 255.0;
     Mat4::from_cols(
         [w / 2.0, 0.0, 0.0, 0.0].into(),
         [0.0, h / 2.0, 0.0, 0.0].into(),
-        [0.0, 0.0, depth / 2.0, 0.0].into(),
-        [x + w / 2.0, y + h / 2.0, depth / 2.0, 1.0].into(),
+        [0.0, 0.0, DEPTH_MAX / 2.0, 0.0].into(),
+        [x + w / 2.0, y + h / 2.0, DEPTH_MAX / 2.0, 1.0].into(),
     )
 }

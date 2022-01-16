@@ -37,6 +37,7 @@ pub enum RenderScene {
     GouraudNormalAsDiffuse,
     NormalShader,
     PhongShader,
+    ShadowBuffer,
 }
 
 pub fn render_scene(
@@ -207,6 +208,16 @@ pub fn render_scene(
                 &model.diffuse_texture,
                 &model.normal_texture_global,
                 &model.specular_texture,
+            );
+
+            image.model_shader(&model, &mut shader);
+        }
+        RenderScene::ShadowBuffer => {
+            let mut shader = crate::shaders::DepthShader::new(
+                viewport,
+                // NB: looking from the light position so that framebuffer is filled with shadow buffer
+                perspective_projection_transform
+                    * look_at_transform(light_dir, camera_look_at, camera_up),
             );
 
             image.model_shader(&model, &mut shader);

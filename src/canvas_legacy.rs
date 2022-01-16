@@ -5,7 +5,7 @@ use rgb::{ComponentMap, RGB8};
 use crate::{
     maths::{self, yolo_max, yolo_min},
     model::Texture,
-    Canvas, Model,
+    Canvas, Model, DEPTH_MAX,
 };
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -221,12 +221,11 @@ impl Canvas {
     ) {
         // viewport matrix resizes/repositions the result to fit on screen
         fn viewport_transform(x: f32, y: f32, w: f32, h: f32) -> Mat4 {
-            let depth = 255.0;
             Mat4::from_cols(
                 [w / 2.0, 0.0, 0.0, 0.0].into(),
                 [0.0, h / 2.0, 0.0, 0.0].into(),
-                [0.0, 0.0, depth / 2.0, 0.0].into(),
-                [x + w / 2.0, y + h / 2.0, depth / 2.0, 1.0].into(),
+                [0.0, 0.0, DEPTH_MAX / 2.0, 0.0].into(),
+                [x + w / 2.0, y + h / 2.0, DEPTH_MAX / 2.0, 1.0].into(),
             )
         }
         let viewport = viewport_transform(

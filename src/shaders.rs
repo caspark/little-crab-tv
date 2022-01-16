@@ -1,4 +1,4 @@
-use glam::{Mat4, Vec2, Vec3, Vec4};
+use glam::{Mat3, Mat4, Vec2, Vec3, Vec4};
 
 use crab_tv::{Shader, Texture, Vertex};
 use rgb::{ComponentMap, RGB8};
@@ -273,5 +273,44 @@ impl Shader<VertexUVs> for PhongShader<'_> {
                     * (diffuse_weight * diffuse_intensity + specular_weight * specular_intensity))
                 as u8
         }))
+    }
+}
+
+type DepthVaryingTri = Mat3;
+
+/// Depth shader
+#[derive(Clone, Debug)]
+pub struct DepthShader {
+    viewport: Mat4,
+    /// projection matrix * modelview matrix
+    uniform_m: Mat4,
+}
+
+impl DepthShader {
+    pub fn new(viewport: Mat4, uniform_m: Mat4) -> DepthShader {
+        Self {
+            viewport,
+            uniform_m,
+        }
+    }
+}
+
+impl Shader<DepthVaryingTri> for DepthShader {
+    fn vertex(&self, input: [Vertex; 3]) -> ([Vec3; 3], DepthVaryingTri) {
+        let mut varying_pos = [Vec3::ZERO; 3];
+        let mut varying_tri = Mat3::ZERO;
+        for (i, vert) in input.iter().enumerate() {
+            varying_pos[i] = (self.viewport * self.uniform_m).project_point3(vert.position);
+
+            *varying_tri.col_mut(i) = varying_pos[i];
+        }
+
+        (varying_pos, varying_tri)
+    }
+
+    fn fragment(&self, barycentric_coords: Vec3, varying_tri: &DepthVaryingTri) -> Option<RGB8> {
+        let p = (*varying_tri) * barycentric_coords;
+        let depth_scaled = p.z / crab_tv::DEPTH_MAX;
+        Some(crab_tv::WHITE.map(|c| (c as f32 * depth_scaled) as u8))
     }
 }
