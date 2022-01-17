@@ -107,7 +107,7 @@ impl Model {
     pub fn validate(model: &Path) -> Result<ModelInput> {
         let model_ext = model
             .extension()
-            .ok_or(anyhow!("Model file '{:?}' must have an extension", model))?;
+            .ok_or_else(|| anyhow!("Model file '{:?}' must have an extension", model))?;
         if model_ext != "obj" {
             bail!(
                 "Model file '{:?}' must be an Obj file that ends in .obj",
@@ -151,7 +151,7 @@ impl Model {
         let mut vertex_normals = Vec::new();
         for line in contents.lines() {
             let line = line.trim();
-            if line.len() == 0 {
+            if line.is_empty() {
                 continue;
             }
 

@@ -13,9 +13,10 @@ pub(crate) fn barycentric_coords_2d(pts: &[IVec2], p: IVec2) -> Vec3 {
     ));
 
     if u[2].abs() < 1.0 {
-        return Vec3::new(-1.0, 1.0, 1.0);
+        Vec3::new(-1.0, 1.0, 1.0)
+    } else {
+        Vec3::new(1.0 - (u.x + u.y) / u.z, u.y / u.z, u.x / u.z)
     }
-    return Vec3::new(1.0 - (u.x + u.y) / u.z, u.y / u.z, u.x / u.z);
 }
 
 pub(crate) fn barycentric_coords_3d(pts: &[Vec3], p: Vec2) -> Vec3 {
@@ -31,9 +32,10 @@ pub(crate) fn barycentric_coords_3d(pts: &[Vec3], p: Vec2) -> Vec3 {
     ));
 
     if u[2].abs() < 1.0 {
-        return Vec3::new(-1.0, 1.0, 1.0);
+        Vec3::new(-1.0, 1.0, 1.0)
+    } else {
+        Vec3::new(1.0 - (u.x + u.y) / u.z, u.y / u.z, u.x / u.z)
     }
-    return Vec3::new(1.0 - (u.x + u.y) / u.z, u.y / u.z, u.x / u.z);
 }
 
 pub(crate) fn barycentric_coords_3d_matrix(pts: Mat3, p: Vec2) -> Vec3 {
@@ -49,14 +51,15 @@ pub(crate) fn barycentric_coords_3d_matrix(pts: Mat3, p: Vec2) -> Vec3 {
     ));
 
     if u[2].abs() < 1.0 {
-        return Vec3::new(-1.0, 1.0, 1.0);
+        Vec3::new(-1.0, 1.0, 1.0)
+    } else {
+        Vec3::new(1.0 - (u.x + u.y) / u.z, u.y / u.z, u.x / u.z)
     }
-    return Vec3::new(1.0 - (u.x + u.y) / u.z, u.y / u.z, u.x / u.z);
 }
 
 #[inline]
 pub(crate) fn yolo_compare<N: std::cmp::PartialOrd>(a: &N, b: &N) -> std::cmp::Ordering {
-    a.partial_cmp(&b).expect("hopefully a and b are comparable")
+    a.partial_cmp(b).expect("hopefully a and b are comparable")
 }
 
 #[inline]

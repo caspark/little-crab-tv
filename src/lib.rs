@@ -1,5 +1,6 @@
 #![deny(clippy::all)] // make all clippy warnings into errors
 #![allow(clippy::many_single_char_names)]
+#![allow(clippy::needless_range_loop)]
 
 mod canvas;
 mod canvas_legacy;

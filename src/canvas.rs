@@ -272,5 +272,5 @@ fn max_elevation_angle(image: &Canvas, p: Vec2, dir: Vec2, samples: usize) -> f3
             - image.z_buffer_at(p.x as i32, p.y as i32);
         max_angle = max_angle.max((elevation / distance).atan());
     }
-    return max_angle;
+    max_angle
 }
