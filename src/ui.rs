@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use crab_tv::{Canvas, Model};
+use crab_tv::{Canvas, Model, DEPTH_MAX};
 use eframe::{
     egui::{self, TextureId},
     epi,
@@ -152,6 +152,8 @@ impl RendererApp {
             input.camera_look_at,
             input.camera_up,
             input.use_tangent_space_normal_map,
+            input.shadow_darkness,
+            input.shadow_z_fix,
             input.ambient_occlusion_passes,
             input.ambient_occlusion_strength,
         )
@@ -287,6 +289,20 @@ impl epi::App for RendererApp {
                         ui.checkbox(
                             &mut self.config.use_tangent_space_normal_map,
                             "Use tangent space (rather than global) normal map",
+                        );
+                        ui.end_row();
+
+                        ui.add(
+                            egui::Slider::new(&mut self.config.shadow_darkness, 0.0..=1.0)
+                                .text("Shadow darkness"),
+                        );
+                        ui.end_row();
+                        ui.add(
+                            egui::Slider::new(
+                                &mut self.config.shadow_z_fix,
+                                0.0..=DEPTH_MAX / 20.0,
+                            )
+                            .text("Shadow Z fix offset"),
                         );
                         ui.end_row();
 

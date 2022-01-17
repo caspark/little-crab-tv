@@ -198,11 +198,30 @@ pub enum NormalMap<'t> {
 
 /// The output of a depth pass rendered from the perspective of a light source, plus the matrix used
 /// to undo that transformation.
-#[derive(Clone, Debug, Constructor)]
+#[derive(Clone, Debug)]
 pub struct PhongShadowInput {
     // transform framebuffer screen coordinates to shadowbuffer screen coordinates for shadows
     uniform_m_shadow: Mat4,
     shadow_buffer: Canvas,
+    shadow_multiplier: f32,
+    // Require shadows to be this much longer (deeper), to avoid z-fighting
+    shadow_z_fix: f32,
+}
+
+impl PhongShadowInput {
+    pub fn new(
+        uniform_m_shadow: Mat4,
+        shadow_buffer: Canvas,
+        shadow_darkness: f32,
+        shadow_z_fix: f32,
+    ) -> Self {
+        Self {
+            uniform_m_shadow,
+            shadow_buffer,
+            shadow_multiplier: 1.0 - shadow_darkness,
+            shadow_z_fix,
+        }
+    }
 }
 
 pub struct PhongShaderState {
@@ -344,9 +363,11 @@ impl Shader<PhongShaderState> for PhongShader<'_> {
             crab_tv::yolo_max(0.0, r.z).powf(self.specular_texture.get_specular(uv));
 
         // check if this pixel is shadowed according to the shadow buffer
-        let shaded = if let Some(PhongShadowInput {
+        let shadow_multiplier = if let Some(PhongShadowInput {
             uniform_m_shadow,
             ref shadow_buffer,
+            shadow_multiplier,
+            shadow_z_fix,
         }) = &self.shadows
         {
             let uniform_m_shadow = uniform_m_shadow.to_owned();
@@ -356,13 +377,16 @@ impl Shader<PhongShaderState> for PhongShader<'_> {
                 let p = uniform_m_shadow * (varying_tri * barycentric_coords).extend(1.0);
                 (p / p.w).truncate() // convert from homogenous coordinates back to vec3
             };
-            let magic_z_fighting_fixer = 5.0;
-            (shadow_buffer.pixel(sb_p.x as i32, sb_p.y as i32).r as f32)
-                >= sb_p.z + magic_z_fighting_fixer
+            let shaded = (shadow_buffer.pixel(sb_p.x as i32, sb_p.y as i32).r as f32)
+                >= sb_p.z + shadow_z_fix;
+            if shaded {
+                *shadow_multiplier
+            } else {
+                1.0
+            }
         } else {
-            false
+            1.0
         };
-        let shadow = if shaded { 0.3 } else { 1.0 };
 
         // phong shading weights of each light component
         let ambient_weight = 1.0;
@@ -371,7 +395,7 @@ impl Shader<PhongShaderState> for PhongShader<'_> {
 
         Some(unlit_color.map(|comp| {
             (ambient_weight * ambient_intensity
-                + (comp as f32 * shadow)
+                + (comp as f32 * shadow_multiplier)
                     * (diffuse_weight * diffuse_intensity + specular_weight * specular_intensity))
                 as u8
         }))

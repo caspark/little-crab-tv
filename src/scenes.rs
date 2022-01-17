@@ -65,6 +65,8 @@ pub fn render_scene(
     camera_look_at: Vec3,
     camera_up: Vec3,
     use_tangent_space_normal_map: bool,
+    shadow_darkness: f32,
+    shadow_z_fix: f32,
     ambient_occlusion_passes: usize,
     ambient_occlusion_strength: f32,
 ) -> Result<()> {
@@ -256,7 +258,6 @@ pub fn render_scene(
         }
         RenderScene::Shadowed => {
             let mut shadow_buffer = image.clone();
-
             let shadow_modelview_transform =
                 look_at_transform(light_dir, camera_look_at, camera_up);
             let shadow_projection = Mat4::IDENTITY;
@@ -277,6 +278,8 @@ pub fn render_scene(
                 Some(PhongShadowInput::new(
                     shadow_m * (viewport * uniform_m).inverse(),
                     shadow_buffer,
+                    shadow_darkness,
+                    shadow_z_fix,
                 )),
             );
 
@@ -290,7 +293,6 @@ pub fn render_scene(
         }
         RenderScene::ScreenSpaceAmbientOcclusion => {
             let mut shadow_buffer = image.clone();
-
             let shadow_modelview_transform =
                 look_at_transform(light_dir, camera_look_at, camera_up);
             let shadow_projection = Mat4::IDENTITY;
@@ -311,6 +313,8 @@ pub fn render_scene(
                 Some(PhongShadowInput::new(
                     shadow_m * (viewport * uniform_m).inverse(),
                     shadow_buffer,
+                    shadow_darkness,
+                    shadow_z_fix,
                 )),
             );
 
@@ -349,6 +353,8 @@ mod tests {
                 Vec3::ZERO,
                 Vec3::new(0.0, 1.0, 0.0),
                 true,
+                0.7,
+                5.0,
                 5,
                 2.0,
             )?;

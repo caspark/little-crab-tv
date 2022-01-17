@@ -26,6 +26,8 @@ pub struct RenderConfig {
     camera_look_at: Vec3,
     camera_up: Vec3,
     use_tangent_space_normal_map: bool,
+    shadow_darkness: f32,
+    shadow_z_fix: f32,
     ambient_occlusion_passes: usize,
     ambient_occlusion_strength: f32,
     output_filename: String,
@@ -57,6 +59,12 @@ impl RenderConfig {
             bail!("Camera's 'look from' position must not be the same as its 'look at' position");
         }
 
+        if self.shadow_darkness < 0.0 {
+            bail!("Shadow darkness must be 0.0 or greater");
+        } else if self.shadow_darkness > 1.0 {
+            bail!("Height must be 1.0 or less");
+        }
+
         Ok(RenderInput {
             scene: self.scene,
             width: self.width,
@@ -68,6 +76,8 @@ impl RenderConfig {
             camera_look_at: self.camera_look_at,
             camera_up: self.camera_up,
             use_tangent_space_normal_map: self.use_tangent_space_normal_map,
+            shadow_darkness: self.shadow_darkness,
+            shadow_z_fix: self.shadow_z_fix,
             ambient_occlusion_passes: self.ambient_occlusion_passes,
             ambient_occlusion_strength: self.ambient_occlusion_strength,
         })
@@ -87,6 +97,8 @@ impl Default for RenderConfig {
             camera_look_at: Vec3::ZERO,
             camera_up: Vec3::new(0.0, 1.0, 0.0),
             use_tangent_space_normal_map: false,
+            shadow_darkness: 0.7,
+            shadow_z_fix: 5.0,
             ambient_occlusion_passes: 5,
             ambient_occlusion_strength: 2.0,
             output_filename: "target/output.png".to_owned(),
@@ -108,6 +120,8 @@ pub struct RenderInput {
     camera_look_at: Vec3,
     camera_up: Vec3,
     use_tangent_space_normal_map: bool,
+    shadow_darkness: f32,
+    shadow_z_fix: f32,
     ambient_occlusion_passes: usize,
     ambient_occlusion_strength: f32,
 }
