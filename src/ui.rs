@@ -236,8 +236,15 @@ impl epi::App for RendererApp {
 
                     ui.collapsing("Render options", |ui| {
                         ui.horizontal(|ui| {
-                            ui.label("Image filename");
+                            ui.label("Model path");
                             path_edit_singleline(ui, &mut self.config.model);
+                            ui.label(" or ");
+                            if ui.add(egui::widgets::Button::new("Head")).clicked() {
+                                self.config.model = "assets/head.obj".into();
+                            }
+                            if ui.add(egui::widgets::Button::new("Diablo")).clicked() {
+                                self.config.model = "assets/diablo.obj".into();
+                            }
                         });
                         ui.end_row();
 
@@ -341,7 +348,10 @@ impl epi::App for RendererApp {
                     ui.collapsing("Save render", |ui| {
                         ui.horizontal(|ui| {
                             ui.label("Path");
-                            ui.text_edit_singleline(&mut self.config.output_filename);
+                            ui.add(
+                                egui::TextEdit::singleline(&mut self.config.output_filename)
+                                    .desired_width(200.0),
+                            );
                             if let Some(ref data) = self.data {
                                 let button = egui::widgets::Button::new("Save");
                                 if ui.add(button).clicked() {
@@ -405,7 +415,7 @@ impl epi::App for RendererApp {
 
 fn path_edit_singleline(ui: &mut egui::Ui, path_buf: &mut PathBuf) {
     let mut temp = path_buf.to_string_lossy().to_string();
-    ui.text_edit_singleline(&mut temp);
+    ui.add(egui::TextEdit::singleline(&mut temp).desired_width(100.0));
     *path_buf = PathBuf::from(temp);
 }
 
