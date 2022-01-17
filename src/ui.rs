@@ -151,6 +151,7 @@ impl RendererApp {
             input.camera_look_from,
             input.camera_look_at,
             input.camera_up,
+            input.phong_lighting_weights,
             input.use_tangent_space_normal_map,
             input.shadow_darkness,
             input.shadow_z_fix,
@@ -283,6 +284,22 @@ impl epi::App for RendererApp {
                         ui.add(
                             egui::Slider::new(&mut self.config.camera_distance, 1.0..=10.0)
                                 .text("Camera perspective distance"),
+                        );
+                        ui.end_row();
+
+                        ui.add(
+                            egui::Slider::new(&mut self.config.phong_lighting_weights.x, 0.0..=3.0)
+                                .text("Phong lighting: Ambient weight"),
+                        );
+                        ui.end_row();
+                        ui.add(
+                            egui::Slider::new(&mut self.config.phong_lighting_weights.y, 0.0..=3.0)
+                                .text("Phong lighting: Diffuse weight"),
+                        );
+                        ui.end_row();
+                        ui.add(
+                            egui::Slider::new(&mut self.config.phong_lighting_weights.z, 0.0..=3.0)
+                                .text("Phong lighting: Specular weight"),
                         );
                         ui.end_row();
 

@@ -1,4 +1,3 @@
-use derive_more::Constructor;
 use glam::{Mat3, Mat4, Vec2, Vec3, Vec4};
 
 use crab_tv::{Canvas, Shader, Texture, Vertex};
@@ -240,6 +239,8 @@ pub struct PhongShader<'t> {
     /// projection matrix * modelview matrix then inverted & transposed, for correcting normals
     uniform_mit: Mat4,
     light_dir: Vec3,
+    /// Ambient, diffuse, specular lighting weights
+    phong_lighting_weights: Vec3,
     diffuse_texture: &'t Texture,
     /// normal texture must be in tangent space coordinates
     normal_texture: NormalMap<'t>,
@@ -252,6 +253,7 @@ impl<'t> PhongShader<'t> {
         viewport: Mat4,
         uniform_m: Mat4,
         light_dir: Vec3,
+        phong_lighting_weights: Vec3,
         diffuse_texture: &'t Texture,
         normal_texture: NormalMap<'t>,
         specular_texture: &'t Texture,
@@ -262,6 +264,7 @@ impl<'t> PhongShader<'t> {
             uniform_m,
             uniform_mit: uniform_m.inverse().transpose(),
             light_dir,
+            phong_lighting_weights,
             diffuse_texture,
             normal_texture,
             specular_texture,
@@ -356,9 +359,8 @@ impl Shader<PhongShaderState> for PhongShader<'_> {
         let unlit_color = self.diffuse_texture.get_pixel(uv);
 
         // calculate lighting intensity for this pixel
-        let diffuse_intensity = crab_tv::yolo_max(0.0, n.dot(self.light_dir));
         let ambient_intensity = 1.0;
-        // let diffuse_intensity = crab_tv::yolo_max(0.0, n.dot(l));
+        let diffuse_intensity = crab_tv::yolo_max(0.0, n.dot(self.light_dir));
         let specular_intensity =
             crab_tv::yolo_max(0.0, r.z).powf(self.specular_texture.get_specular(uv));
 
@@ -389,9 +391,9 @@ impl Shader<PhongShaderState> for PhongShader<'_> {
         };
 
         // phong shading weights of each light component
-        let ambient_weight = 1.0;
-        let diffuse_weight = 1.0;
-        let specular_weight = 0.6;
+        let ambient_weight = self.phong_lighting_weights.x;
+        let diffuse_weight = self.phong_lighting_weights.y;
+        let specular_weight = self.phong_lighting_weights.z;
 
         Some(unlit_color.map(|comp| {
             (ambient_weight * ambient_intensity
