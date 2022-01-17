@@ -46,6 +46,7 @@ pub enum RenderScene {
     ScreenSpaceAmbientOcclusion,
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn render_scene(
     image: &mut Canvas,
     scene: &RenderScene,
@@ -96,7 +97,7 @@ pub fn render_scene(
             image.line(IVec2::new(0, 0), IVec2::new(50, 50), GREEN);
         }
         RenderScene::ModelWireframe => {
-            image.model_wireframe(&model, WHITE);
+            image.model_wireframe(model, WHITE);
         }
         RenderScene::TriangleLineSweepVerbose => {
             let t0 = [IVec2::new(10, 70), IVec2::new(50, 160), IVec2::new(70, 80)];
@@ -135,35 +136,35 @@ pub fn render_scene(
             image.triangle_barycentric(&t2, GREEN);
         }
         RenderScene::ModelColoredTriangles => {
-            image.model_colored_triangles(&model);
+            image.model_colored_triangles(model);
         }
         RenderScene::ModelFlatShaded => {
-            image.model_fixed_function(&model, light_dir, ModelShading::FlatOnly, None);
+            image.model_fixed_function(model, light_dir, ModelShading::FlatOnly, None);
         }
         RenderScene::DepthBuffer => {
-            image.model_fixed_function(&model, light_dir, ModelShading::DepthTested, None);
+            image.model_fixed_function(model, light_dir, ModelShading::DepthTested, None);
             image.replace_with_z_buffer();
         }
         RenderScene::ModelDepthTested => {
-            image.model_fixed_function(&model, light_dir, ModelShading::DepthTested, None);
+            image.model_fixed_function(model, light_dir, ModelShading::DepthTested, None);
         }
         RenderScene::ModelTextured => {
-            image.model_fixed_function(&model, light_dir, ModelShading::Textured, None)
+            image.model_fixed_function(model, light_dir, ModelShading::Textured, None)
         }
         RenderScene::ModelPerspective => image.model_fixed_function(
-            &model,
+            model,
             light_dir,
             ModelShading::Textured,
             Some(projection_transform),
         ),
         RenderScene::ModelGouraud => image.model_fixed_function(
-            &model,
+            model,
             light_dir,
             ModelShading::Gouraud,
             Some(projection_transform),
         ),
         RenderScene::GouraudWithMovableCamera => image.model_fixed_function(
-            &model,
+            model,
             light_dir,
             ModelShading::Gouraud,
             Some(projection_transform * model_view_transform),
@@ -177,7 +178,7 @@ pub fn render_scene(
                 false,
             );
 
-            image.model_shader(&model, &shader);
+            image.model_shader(model, &shader);
         }
         RenderScene::GouraudIntensitiesBucketed => {
             let shader = crate::shaders::GouraudShader::new(
@@ -188,7 +189,7 @@ pub fn render_scene(
                 true,
             );
 
-            image.model_shader(&model, &shader);
+            image.model_shader(model, &shader);
         }
         RenderScene::GouraudNormalAsDiffuse => {
             let shader = crate::shaders::GouraudShader::new(
@@ -199,7 +200,7 @@ pub fn render_scene(
                 false,
             );
 
-            image.model_shader(&model, &shader);
+            image.model_shader(model, &shader);
         }
         RenderScene::NormalShader => {
             let shader = crate::shaders::NormalShader::new(
@@ -210,7 +211,7 @@ pub fn render_scene(
                 &model.normal_texture_global,
             );
 
-            image.model_shader(&model, &shader);
+            image.model_shader(model, &shader);
         }
         RenderScene::PhongShader => {
             let shader = crate::shaders::PhongShader::new(
@@ -223,7 +224,7 @@ pub fn render_scene(
                 None,
             );
 
-            image.model_shader(&model, &shader);
+            image.model_shader(model, &shader);
         }
         RenderScene::ShadowBuffer => {
             let shader = crate::shaders::DepthShader::new(
@@ -232,7 +233,7 @@ pub fn render_scene(
                 look_at_transform(light_dir, camera_look_at, camera_up),
             );
 
-            image.model_shader(&model, &shader);
+            image.model_shader(model, &shader);
         }
         RenderScene::Shadows => {
             let mut shadow_buffer = image.clone();
@@ -244,7 +245,7 @@ pub fn render_scene(
                 viewport,
                 shadow_projection * shadow_modelview_transform,
             );
-            shadow_buffer.model_shader(&model, &shadow_buffer_shader);
+            shadow_buffer.model_shader(model, &shadow_buffer_shader);
             let shadow_m = viewport * shadow_projection * shadow_modelview_transform;
 
             let shader = crate::shaders::PhongShader::new(
@@ -260,11 +261,11 @@ pub fn render_scene(
                 )),
             );
 
-            image.model_shader(&model, &shader);
+            image.model_shader(model, &shader);
         }
         RenderScene::ScreenSpaceAmbientOcclusionCalculated => {
             let z_depth_shader = crate::shaders::PureColorShader::new(viewport, uniform_m);
-            image.model_shader(&model, &z_depth_shader);
+            image.model_shader(model, &z_depth_shader);
 
             image.apply_ambient_occlusion(10.0, ambient_occlusion_passes)
         }
@@ -278,7 +279,7 @@ pub fn render_scene(
                 viewport,
                 shadow_projection * shadow_modelview_transform,
             );
-            shadow_buffer.model_shader(&model, &shadow_buffer_shader);
+            shadow_buffer.model_shader(model, &shadow_buffer_shader);
             let shadow_m = viewport * shadow_projection * shadow_modelview_transform;
 
             let shader = crate::shaders::PhongShader::new(
@@ -294,7 +295,7 @@ pub fn render_scene(
                 )),
             );
 
-            image.model_shader(&model, &shader);
+            image.model_shader(model, &shader);
             image.apply_ambient_occlusion(ambient_occlusion_strength, ambient_occlusion_passes)
         }
     }

@@ -130,7 +130,7 @@ impl RendererApp {
                 model_cache.take();
             }
         }
-        if let None = model_cache {
+        if model_cache.is_none() {
             model_cache.replace((
                 input.model_input.path().to_owned(),
                 Model::load_obj_file(&input.model_input).expect("Failed to load model"),
@@ -217,11 +217,7 @@ impl epi::App for RendererApp {
                         ui.label("Scene");
                         ui.vertical(|ui| {
                             for scene in RenderScene::iter() {
-                                ui.radio_value(
-                                    &mut self.config.scene,
-                                    scene.clone(),
-                                    format!("{}", scene.to_string()),
-                                );
+                                ui.radio_value(&mut self.config.scene, scene, format!("{}", scene));
                             }
                         });
                     });

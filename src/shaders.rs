@@ -53,7 +53,7 @@ impl Shader<GouraudShaderState> for GouraudShader<'_> {
             };
 
             // Transform the vertex texture coordinates based on the texture we have
-            varying_uv[i] = if let Some(ref texture) = self.diffuse_texture {
+            varying_uv[i] = if let Some(texture) = self.diffuse_texture {
                 Vec2::new(
                     vert.uv.x * texture.width as f32,
                     vert.uv.y * texture.height as f32,
@@ -95,7 +95,7 @@ impl Shader<GouraudShaderState> for GouraudShader<'_> {
             weighted_light_intensity
         };
 
-        let unlit_color = if let Some(ref tex) = self.diffuse_texture {
+        let unlit_color = if let Some(tex) = self.diffuse_texture {
             tex.get_pixel(uv)
         } else {
             crab_tv::WHITE
