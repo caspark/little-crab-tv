@@ -151,6 +151,7 @@ impl RendererApp {
             input.camera_look_from,
             input.camera_look_at,
             input.camera_up,
+            input.use_tangent_space_normal_map,
             input.ambient_occlusion_passes,
             input.ambient_occlusion_strength,
         )
@@ -280,6 +281,12 @@ impl epi::App for RendererApp {
                         ui.add(
                             egui::Slider::new(&mut self.config.camera_distance, 1.0..=10.0)
                                 .text("Camera perspective distance"),
+                        );
+                        ui.end_row();
+
+                        ui.checkbox(
+                            &mut self.config.use_tangent_space_normal_map,
+                            "Use tangent space (rather than global) normal map",
                         );
                         ui.end_row();
 

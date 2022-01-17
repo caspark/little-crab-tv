@@ -7,7 +7,7 @@ use crab_tv::{
 };
 use strum::IntoEnumIterator;
 
-use crate::shaders::PhongShadowInput;
+use crate::shaders::{NormalMap, PhongShadowInput};
 
 #[derive(
     Copy,
@@ -64,6 +64,7 @@ pub fn render_scene(
     camera_look_from: Vec3,
     camera_look_at: Vec3,
     camera_up: Vec3,
+    use_tangent_space_normal_map: bool,
     ambient_occlusion_passes: usize,
     ambient_occlusion_strength: f32,
 ) -> Result<()> {
@@ -87,6 +88,12 @@ pub fn render_scene(
     let model_view_transform = look_at_transform(camera_look_from, camera_look_at, camera_up);
 
     let uniform_m = projection_transform * model_view_transform;
+
+    let phong_normal_map = if use_tangent_space_normal_map {
+        NormalMap::TangentSpace(&model.normal_texture_darboux)
+    } else {
+        NormalMap::GlobalSpace(&model.normal_texture_global)
+    };
 
     match scene {
         RenderScene::FivePixels => {
@@ -231,7 +238,7 @@ pub fn render_scene(
                 uniform_m,
                 light_dir,
                 &model.diffuse_texture,
-                &model.normal_texture_darboux,
+                phong_normal_map,
                 &model.specular_texture,
                 None,
             );
@@ -265,7 +272,7 @@ pub fn render_scene(
                 uniform_m,
                 light_dir,
                 &model.diffuse_texture,
-                &model.normal_texture_darboux,
+                phong_normal_map,
                 &model.specular_texture,
                 Some(PhongShadowInput::new(
                     shadow_m * (viewport * uniform_m).inverse(),
@@ -299,7 +306,7 @@ pub fn render_scene(
                 uniform_m,
                 light_dir,
                 &model.diffuse_texture,
-                &model.normal_texture_darboux,
+                phong_normal_map,
                 &model.specular_texture,
                 Some(PhongShadowInput::new(
                     shadow_m * (viewport * uniform_m).inverse(),
@@ -341,6 +348,7 @@ mod tests {
                 Vec3::new(0.0, 0.0, 3.0),
                 Vec3::ZERO,
                 Vec3::new(0.0, 1.0, 0.0),
+                true,
                 5,
                 2.0,
             )?;

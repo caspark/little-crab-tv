@@ -190,6 +190,12 @@ impl Shader<VertexUVs> for NormalShader<'_> {
     }
 }
 
+#[derive(Clone, Debug)]
+pub enum NormalMap<'t> {
+    GlobalSpace(&'t Texture),
+    TangentSpace(&'t Texture),
+}
+
 /// The output of a depth pass rendered from the perspective of a light source, plus the matrix used
 /// to undo that transformation.
 #[derive(Clone, Debug, Constructor)]
@@ -217,7 +223,7 @@ pub struct PhongShader<'t> {
     light_dir: Vec3,
     diffuse_texture: &'t Texture,
     /// normal texture must be in tangent space coordinates
-    normal_texture: &'t Texture,
+    normal_texture: NormalMap<'t>,
     specular_texture: &'t Texture,
     shadows: Option<PhongShadowInput>,
 }
@@ -228,19 +234,17 @@ impl<'t> PhongShader<'t> {
         uniform_m: Mat4,
         light_dir: Vec3,
         diffuse_texture: &'t Texture,
-        normal_texture_darboux: &'t Texture,
+        normal_texture: NormalMap<'t>,
         specular_texture: &'t Texture,
         shadows: Option<PhongShadowInput>,
     ) -> PhongShader<'t> {
         Self {
             viewport,
             uniform_m,
-            // FIXME it seems uniform_mit should include projection matrix, but uniform_m shouldn't?
-            // See what's passed into the shader constructor in tinyrenderer commit 0c1d955
             uniform_mit: uniform_m.inverse().transpose(),
             light_dir,
             diffuse_texture,
-            normal_texture: normal_texture_darboux,
+            normal_texture,
             specular_texture,
             shadows,
         }
@@ -281,45 +285,65 @@ impl Shader<PhongShaderState> for PhongShader<'_> {
             varying_nrm,
         } = *state;
 
-        let bn = (varying_nrm * barycentric_coords).normalize();
         let uv = varying_uv[0] * barycentric_coords[0]
             + varying_uv[1] * barycentric_coords[1]
             + varying_uv[2] * barycentric_coords[2];
 
-        let A = {
-            let mut A = Mat3::ZERO;
-            *A.col_mut(0) = varying_tri.col(1) - varying_tri.col(0);
-            *A.col_mut(1) = varying_tri.col(2) - varying_tri.col(0);
-            *A.col_mut(2) = bn;
-            A.transpose()
+        // calculate normal for this fragment using the normal texture
+        let n = match self.normal_texture {
+            NormalMap::GlobalSpace(normal_texture) => self
+                .uniform_mit
+                .project_point3(normal_texture.get_normal(uv))
+                .normalize(),
+            NormalMap::TangentSpace(normal_texture) => {
+                let bn = (varying_nrm * barycentric_coords).normalize();
+
+                let A = {
+                    let mut A = Mat3::ZERO;
+                    *A.col_mut(0) = varying_tri.col(1) - varying_tri.col(0);
+                    *A.col_mut(1) = varying_tri.col(2) - varying_tri.col(0);
+                    *A.col_mut(2) = bn;
+                    A.transpose()
+                };
+                let AI = A.inverse();
+
+                let i = AI
+                    * Vec3::new(
+                        varying_uv[1].x - varying_uv[0].x,
+                        varying_uv[2].x - varying_uv[0].x,
+                        0.0,
+                    );
+                let j = AI
+                    * Vec3::new(
+                        varying_uv[1].y - varying_uv[0].y,
+                        varying_uv[2].y - varying_uv[0].y,
+                        0.0,
+                    );
+
+                let B = {
+                    let mut B = Mat3::ZERO;
+                    *B.col_mut(0) = i.normalize();
+                    *B.col_mut(1) = j.normalize();
+                    *B.col_mut(2) = bn;
+                    B
+                };
+
+                (B * normal_texture.get_normal(uv)).normalize()
+            }
         };
-        let AI = A.inverse();
+        let l = self.uniform_m.project_point3(self.light_dir).normalize();
+        let r = (n * (n.dot(l) * 2.0) - l).normalize(); // reflected light
 
-        let i = AI
-            * Vec3::new(
-                varying_uv[1].x - varying_uv[0].x,
-                varying_uv[2].x - varying_uv[0].x,
-                0.0,
-            );
-        let j = AI
-            * Vec3::new(
-                varying_uv[1].y - varying_uv[0].y,
-                varying_uv[2].y - varying_uv[0].y,
-                0.0,
-            );
+        let unlit_color = self.diffuse_texture.get_pixel(uv);
 
-        let B = {
-            let mut B = Mat3::ZERO;
-            *B.col_mut(0) = i.normalize();
-            *B.col_mut(1) = j.normalize();
-            *B.col_mut(2) = bn;
-            B
-        };
-
-        let n = (B * self.normal_texture.get_normal(uv)).normalize();
-
+        // calculate lighting intensity for this pixel
         let diffuse_intensity = crab_tv::yolo_max(0.0, n.dot(self.light_dir));
+        let ambient_intensity = 1.0;
+        // let diffuse_intensity = crab_tv::yolo_max(0.0, n.dot(l));
+        let specular_intensity =
+            crab_tv::yolo_max(0.0, r.z).powf(self.specular_texture.get_specular(uv));
 
+        // check if this pixel is shadowed according to the shadow buffer
         let shaded = if let Some(PhongShadowInput {
             uniform_m_shadow,
             ref shadow_buffer,
@@ -338,23 +362,7 @@ impl Shader<PhongShaderState> for PhongShader<'_> {
         } else {
             false
         };
-
         let shadow = if shaded { 0.3 } else { 1.0 };
-
-        // let n = self
-        //     .uniform_mit
-        //     .project_point3(self.normal_texture.get_normal(uv))
-        //     .normalize();
-        let l = self.uniform_m.project_point3(self.light_dir).normalize();
-        let r = (n * (n.dot(l) * 2.0) - l).normalize(); // reflected light
-
-        let unlit_color = self.diffuse_texture.get_pixel(uv);
-
-        // calculate lighting intensity for this pixel
-        let ambient_intensity = 1.0;
-        // let diffuse_intensity = crab_tv::yolo_max(0.0, n.dot(l));
-        let specular_intensity =
-            crab_tv::yolo_max(0.0, r.z).powf(self.specular_texture.get_specular(uv));
 
         // phong shading weights of each light component
         let ambient_weight = 1.0;
