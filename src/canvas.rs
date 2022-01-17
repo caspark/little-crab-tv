@@ -3,7 +3,7 @@ use rgb::RGB8;
 
 use crate::{
     maths::{self, yolo_max, yolo_min},
-    Model,
+    Model, DEPTH_MAX,
 };
 
 #[derive(Copy, Clone, Debug, PartialEq, Default)]
@@ -107,6 +107,15 @@ impl Canvas {
             self.height as i32
         );
         &mut self.z_buffer[y as usize * self.width + x as usize]
+    }
+
+    pub fn replace_with_z_buffer(&mut self) {
+        self.pixels = self
+            .z_buffer
+            .iter()
+            .map(|d| (*d * 255.0 / DEPTH_MAX) as u8)
+            .map(|c| RGB8::new(c, c, c))
+            .collect();
     }
 
     pub fn flip_y(&mut self) {

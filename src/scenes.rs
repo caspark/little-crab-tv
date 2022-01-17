@@ -29,6 +29,7 @@ pub enum RenderScene {
     TriangleBarycentric,
     ModelColoredTriangles,
     ModelFlatShaded,
+    DepthBuffer,
     ModelDepthTested,
     ModelTextured,
     ModelPerspective,
@@ -134,6 +135,10 @@ pub fn render_scene(
         }
         RenderScene::ModelFlatShaded => {
             image.model_fixed_function(&model, light_dir, ModelShading::FlatOnly, None);
+        }
+        RenderScene::DepthBuffer => {
+            image.model_fixed_function(&model, light_dir, ModelShading::DepthTested, None);
+            image.replace_with_z_buffer();
         }
         RenderScene::ModelDepthTested => {
             image.model_fixed_function(&model, light_dir, ModelShading::DepthTested, None);
