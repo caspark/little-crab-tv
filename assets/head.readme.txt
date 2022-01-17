@@ -1,0 +1,3 @@
+Sourced from https://github.com/ssloy/tinyrenderer
+
+Yes, the eyes are missing - they're just not in this model.

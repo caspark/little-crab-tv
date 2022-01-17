@@ -92,7 +92,7 @@ impl Default for RenderConfig {
             scene: RenderScene::default(),
             width: 1000,
             height: 1000,
-            model: PathBuf::from("assets/african_head.obj"),
+            model: PathBuf::from("assets/head.obj"),
             light_dir: Vec3::new(0.0, 0.0, 1.0),
             camera_distance: 3.0,
             camera_look_from: Vec3::new(0.0, 0.0, 3.0),
