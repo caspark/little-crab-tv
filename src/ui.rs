@@ -91,6 +91,7 @@ impl UiData {
 pub struct RendererApp {
     config: RenderConfig,
     data: Option<UiData>,
+    cached_model: Option<(PathBuf, Model)>,
 }
 
 impl RendererApp {
@@ -98,6 +99,7 @@ impl RendererApp {
         RendererApp {
             config: Default::default(),
             data: Default::default(),
+            cached_model: None,
         }
     }
 
@@ -121,12 +123,29 @@ impl RendererApp {
 
         // render new image
         let mut image = Canvas::new(input.width, input.height);
-        let model = Model::load_obj_file(&input.model_input).expect("Failed to load model");
+
+        let model_cache = &mut self.cached_model;
+        if let Some((path, _)) = model_cache {
+            if path != input.model_input.path() {
+                model_cache.take();
+            }
+        }
+        if let None = model_cache {
+            model_cache.replace((
+                input.model_input.path().to_owned(),
+                Model::load_obj_file(&input.model_input).expect("Failed to load model"),
+            ));
+        }
+        let model = &self
+            .cached_model
+            .as_ref()
+            .expect("model should be loaded")
+            .1;
 
         crate::scenes::render_scene(
             &mut image,
             &input.scene,
-            &model,
+            model,
             input.light_dir,
             input.camera_perspective_dist,
             input.camera_look_from,

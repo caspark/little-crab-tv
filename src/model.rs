@@ -83,7 +83,11 @@ pub struct ModelInput {
     specular_texture: PathBuf,
 }
 
-impl ModelInput {}
+impl ModelInput {
+    pub fn path(&self) -> &Path {
+        self.model.as_path()
+    }
+}
 
 #[derive(Clone, Debug)]
 pub struct Model {
