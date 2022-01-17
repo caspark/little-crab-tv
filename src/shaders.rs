@@ -1,6 +1,7 @@
+use derive_more::Constructor;
 use glam::{Mat3, Mat4, Vec2, Vec3, Vec4};
 
-use crab_tv::{Shader, Texture, Vertex};
+use crab_tv::{Canvas, Shader, Texture, Vertex};
 use rgb::{ComponentMap, RGB8};
 
 #[derive(Clone, Debug)]
@@ -191,6 +192,20 @@ impl Shader<VertexUVs> for NormalShader<'_> {
     }
 }
 
+/// The output of a depth pass rendered from the perspective of a light source, plus the matrix used
+/// to undo that transformation.
+#[derive(Clone, Debug, Constructor)]
+pub struct PhongShadowInput {
+    // transform framebuffer screen coordinates to shadowbuffer screen coordinates for shadows
+    uniform_m_shadow: Mat4,
+    shadow_buffer: Canvas,
+}
+
+pub struct PhongShaderState {
+    varying_tri: Mat3,
+    varying_uv: [Vec2; 3],
+}
+
 /// A shader that handles normals correctly based on a global normal map
 #[derive(Clone, Debug)]
 pub struct PhongShader<'t> {
@@ -204,6 +219,7 @@ pub struct PhongShader<'t> {
     /// normal texture must be in global coordinates
     normal_texture: &'t Texture,
     specular_texture: &'t Texture,
+    shadows: Option<PhongShadowInput>,
 }
 
 impl<'t> PhongShader<'t> {
@@ -214,21 +230,25 @@ impl<'t> PhongShader<'t> {
         diffuse_texture: &'t Texture,
         normal_texture_global: &'t Texture,
         specular_texture: &'t Texture,
+        shadows: Option<PhongShadowInput>,
     ) -> PhongShader<'t> {
         Self {
             viewport,
             uniform_m,
+            // FIXME it seems uniform_mit should include projection matrix, but uniform_m shouldn't?
+            // See what's passed into the shader constructor in tinyrenderer commit 0c1d955
             uniform_mit: uniform_m.inverse().transpose(),
             light_dir,
             diffuse_texture,
             normal_texture: normal_texture_global,
             specular_texture,
+            shadows,
         }
     }
 }
 
-impl Shader<VertexUVs> for PhongShader<'_> {
-    fn vertex(&self, input: [Vertex; 3]) -> (Mat3, VertexUVs) {
+impl Shader<PhongShaderState> for PhongShader<'_> {
+    fn vertex(&self, input: [Vertex; 3]) -> (Mat3, PhongShaderState) {
         let mut varying_tri = Mat3::ZERO;
         let mut varying_uv = [Vec2::ZERO; 3];
         for (i, vert) in input.iter().enumerate() {
@@ -241,10 +261,42 @@ impl Shader<VertexUVs> for PhongShader<'_> {
             );
         }
 
-        (varying_tri, varying_uv)
+        (
+            varying_tri,
+            PhongShaderState {
+                varying_tri,
+                varying_uv,
+            },
+        )
     }
 
-    fn fragment(&self, barycentric_coords: Vec3, varying_uv: &VertexUVs) -> Option<RGB8> {
+    fn fragment(&self, barycentric_coords: Vec3, state: &PhongShaderState) -> Option<RGB8> {
+        let PhongShaderState {
+            varying_tri,
+            varying_uv,
+        } = *state;
+
+        let shaded = if let Some(PhongShadowInput {
+            uniform_m_shadow,
+            ref shadow_buffer,
+        }) = &self.shadows
+        {
+            let uniform_m_shadow = uniform_m_shadow.to_owned();
+
+            // look up corresponding point in the shadow buffer
+            let sb_p = {
+                let p = uniform_m_shadow * (varying_tri * barycentric_coords).extend(1.0);
+                (p / p.w).truncate() // convert from homogenous coordinates back to vec3
+            };
+            let magic_z_fighting_fixer = 5.0;
+            (shadow_buffer.pixel(sb_p.x as i32, sb_p.y as i32).r as f32)
+                >= sb_p.z + magic_z_fighting_fixer
+        } else {
+            false
+        };
+
+        let shadow = if shaded { 0.3 } else { 1.0 };
+
         let uv = varying_uv[0] * barycentric_coords[0]
             + varying_uv[1] * barycentric_coords[1]
             + varying_uv[2] * barycentric_coords[2];
@@ -259,19 +311,19 @@ impl Shader<VertexUVs> for PhongShader<'_> {
         let unlit_color = self.diffuse_texture.get_pixel(uv);
 
         // calculate lighting intensity for this pixel
-        let ambient_intensity = 1.0;
+        let ambient_intensity = 20.0;
         let diffuse_intensity = crab_tv::yolo_max(0.0, n.dot(l));
         let specular_intensity =
             crab_tv::yolo_max(0.0, r.z).powf(self.specular_texture.get_specular(uv));
 
         // phong shading weights of each light component
-        let ambient_weight = 5.0;
-        let diffuse_weight = 1.0;
+        let ambient_weight = 1.0;
+        let diffuse_weight = 1.2;
         let specular_weight = 0.6;
 
         Some(unlit_color.map(|comp| {
             (ambient_weight * ambient_intensity
-                + comp as f32
+                + (comp as f32 * shadow)
                     * (diffuse_weight * diffuse_intensity + specular_weight * specular_intensity))
                 as u8
         }))

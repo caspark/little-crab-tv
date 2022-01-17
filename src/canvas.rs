@@ -59,7 +59,24 @@ impl Canvas {
     }
 
     #[inline]
-    pub fn pixel(&mut self, x: i32, y: i32) -> &mut RGB8 {
+    pub fn pixel(&self, x: i32, y: i32) -> RGB8 {
+        debug_assert!(
+            x >= 0 && x < self.width as i32,
+            "x coordinate of '{}' is out of bounds 0 to {}",
+            x,
+            self.width as i32
+        );
+        debug_assert!(
+            y >= 0 && y < self.height as i32,
+            "y coordinate of '{}' is out of bounds 0 to {}",
+            y,
+            self.height as i32
+        );
+        self.pixels[y as usize * self.width + x as usize]
+    }
+
+    #[inline]
+    pub fn pixel_mut(&mut self, x: i32, y: i32) -> &mut RGB8 {
         debug_assert!(
             x >= 0 && x < self.width as i32,
             "x coordinate of '{}' is out of bounds 0 to {}",
@@ -165,7 +182,7 @@ impl Canvas {
                     let maybe_color = shader.fragment(bc_screen, &shader_state);
                     if let Some(color) = maybe_color {
                         *z_buf_for_pixel = pixel_z;
-                        *self.pixel(i, j) = color;
+                        *self.pixel_mut(i, j) = color;
                     }
                 }
             }

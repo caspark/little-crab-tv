@@ -25,7 +25,7 @@ impl Canvas {
             let i = f64::from(i) * increment;
             let x = x0 as f64 + (x1 - x0) as f64 * i;
             let y = y0 as f64 + (y1 - y0) as f64 * i;
-            *self.pixel(x as i32, y as i32) = color;
+            *self.pixel_mut(x as i32, y as i32) = color;
         }
     }
 
@@ -34,7 +34,7 @@ impl Canvas {
         for x in x0..x1 {
             let t = (x - x0) as f64 / (x1 - x0) as f64;
             let y = y0 as f64 * (1.0 - t) as f64 + y1 as f64 * t as f64;
-            *self.pixel(x as i32, y as i32) = color;
+            *self.pixel_mut(x as i32, y as i32) = color;
         }
     }
 
@@ -58,9 +58,9 @@ impl Canvas {
             let t = (x - x0) as f64 / divisor as f64;
             let y = y0 as f64 * (1.0 - t) as f64 + y1 as f64 * t as f64;
             if steep {
-                *self.pixel(y as i32, x as i32) = color;
+                *self.pixel_mut(y as i32, x as i32) = color;
             } else {
-                *self.pixel(x as i32, y as i32) = color;
+                *self.pixel_mut(x as i32, y as i32) = color;
             }
         }
     }
@@ -87,9 +87,9 @@ impl Canvas {
         let mut y = y0;
         for x in x0..x1 {
             if steep {
-                *self.pixel(y, x) = color;
+                *self.pixel_mut(y, x) = color;
             } else {
-                *self.pixel(x, y) = color;
+                *self.pixel_mut(x, y) = color;
             }
             error += derror;
             if error > 0.5 {
@@ -128,9 +128,9 @@ impl Canvas {
         let mut y = y0;
         for x in x0..x1 {
             if steep {
-                *self.pixel(y as i32, x as i32) = color;
+                *self.pixel_mut(y as i32, x as i32) = color;
             } else {
-                *self.pixel(x as i32, y as i32) = color;
+                *self.pixel_mut(x as i32, y as i32) = color;
             }
             error2 += derror2;
             if error2 > dx {
@@ -392,7 +392,7 @@ impl Canvas {
             }
             // 3. draw a horizontal line between the two endpoints
             for j in a.x..=b.x {
-                *self.pixel(j, y) = color;
+                *self.pixel_mut(j, y) = color;
             }
         }
 
@@ -410,7 +410,7 @@ impl Canvas {
                 std::mem::swap(&mut a, &mut b);
             }
             for j in a.x..=b.x {
-                *self.pixel(j, y) = color;
+                *self.pixel_mut(j, y) = color;
             }
         }
     }
@@ -452,7 +452,7 @@ impl Canvas {
                 std::mem::swap(&mut a, &mut b);
             }
             for j in a.x..=b.x {
-                *self.pixel(j, t0.y + i) = color;
+                *self.pixel_mut(j, t0.y + i) = color;
             }
         }
     }
@@ -475,7 +475,7 @@ impl Canvas {
                 p = IVec2::new(i, j);
                 let bc_screen = maths::barycentric_coords_2d(pts, p);
                 if bc_screen.x >= 0.0 && bc_screen.y >= 0.0 && bc_screen.z >= 0.0 {
-                    *self.pixel(i, j) = color;
+                    *self.pixel_mut(i, j) = color;
                 }
             }
         }
@@ -507,7 +507,7 @@ impl Canvas {
                 let z_buf_for_pixel = self.z_buffer_at(i, j);
                 if *z_buf_for_pixel < pixel_z {
                     *z_buf_for_pixel = pixel_z;
-                    *self.pixel(i, j) = color;
+                    *self.pixel_mut(i, j) = color;
                 }
             }
         }
@@ -553,7 +553,7 @@ impl Canvas {
                     let color = tex.data[(tex.height - uv.y as usize) * tex.width + uv.x as usize]
                         .map(|comp| (comp as f32 * light_intensity) as u8);
 
-                    *self.pixel(i, j) = color;
+                    *self.pixel_mut(i, j) = color;
                 }
             }
         }
@@ -604,7 +604,7 @@ impl Canvas {
                     let color = tex.data[(tex.height - uv.y as usize) * tex.width + uv.x as usize]
                         .map(|comp| (comp as f32 * weighted_light_intensity) as u8);
 
-                    *self.pixel(i, j) = color;
+                    *self.pixel_mut(i, j) = color;
                 }
             }
         }

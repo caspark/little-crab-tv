@@ -6,6 +6,8 @@ use crab_tv::{
     WHITE,
 };
 
+use crate::shaders::PhongShadowInput;
+
 #[derive(
     Copy,
     Clone,
@@ -61,7 +63,7 @@ pub fn render_scene(
     );
 
     // projection matrix applies perspective correction
-    let perspective_projection_transform = Mat4::from_cols(
+    let projection_transform = Mat4::from_cols(
         [1.0, 0.0, 0.0, 0.0].into(),
         [0.0, 1.0, 0.0, 0.0].into(),
         [0.0, 0.0, 1.0, -1.0 / camera_distance].into(),
@@ -70,17 +72,17 @@ pub fn render_scene(
 
     let model_view_transform = look_at_transform(camera_look_from, camera_look_at, camera_up);
 
-    let uniform_m = perspective_projection_transform * model_view_transform;
+    let uniform_m = projection_transform * model_view_transform;
 
     match scene {
         RenderScene::FivePixels => {
             // pixel in the middle
-            *image.pixel(image.width() as i32 / 2, image.height() as i32 / 2) = WHITE;
+            *image.pixel_mut(image.width() as i32 / 2, image.height() as i32 / 2) = WHITE;
             // then each of the 4 corners
-            *image.pixel(0, image.height() as i32 - 1) = RED; // top left
-            *image.pixel(image.width() as i32 - 1, image.height() as i32 - 1) = GREEN; // top right
-            *image.pixel(0, 0) = BLUE; // bottom left
-            *image.pixel(image.width() as i32 - 1, 0) = CYAN; // bottom right
+            *image.pixel_mut(0, image.height() as i32 - 1) = RED; // top left
+            *image.pixel_mut(image.width() as i32 - 1, image.height() as i32 - 1) = GREEN; // top right
+            *image.pixel_mut(0, 0) = BLUE; // bottom left
+            *image.pixel_mut(image.width() as i32 - 1, 0) = CYAN; // bottom right
         }
         RenderScene::Lines => {
             image.line(IVec2::new(13, 20), IVec2::new(80, 40), WHITE);
@@ -143,19 +145,19 @@ pub fn render_scene(
             &model,
             light_dir,
             ModelShading::Textured,
-            Some(perspective_projection_transform),
+            Some(projection_transform),
         ),
         RenderScene::ModelGouraud => image.model_fixed_function(
             &model,
             light_dir,
             ModelShading::Gouraud,
-            Some(perspective_projection_transform),
+            Some(projection_transform),
         ),
         RenderScene::GouraudWithMovableCamera => image.model_fixed_function(
             &model,
             light_dir,
             ModelShading::Gouraud,
-            Some(perspective_projection_transform * model_view_transform),
+            Some(projection_transform * model_view_transform),
         ),
         RenderScene::GouraudShaderRefactor => {
             let shader = crate::shaders::GouraudShader::new(
@@ -209,6 +211,7 @@ pub fn render_scene(
                 &model.diffuse_texture,
                 &model.normal_texture_global,
                 &model.specular_texture,
+                None,
             );
 
             image.model_shader(&model, &shader);
@@ -225,13 +228,15 @@ pub fn render_scene(
         RenderScene::Shadows => {
             let mut shadow_buffer = image.clone();
 
+            let shadow_modelview_transform =
+                look_at_transform(light_dir, camera_look_at, camera_up);
+            let shadow_projection = Mat4::IDENTITY;
             let shadow_buffer_shader = crate::shaders::DepthShader::new(
                 viewport,
-                // NB: looking from the light position so that framebuffer is filled with shadow buffer
-                look_at_transform(light_dir, camera_look_at, camera_up),
+                shadow_projection * shadow_modelview_transform,
             );
-
             shadow_buffer.model_shader(&model, &shadow_buffer_shader);
+            let shadow_m = viewport * shadow_projection * shadow_modelview_transform;
 
             let shader = crate::shaders::PhongShader::new(
                 viewport,
@@ -240,6 +245,10 @@ pub fn render_scene(
                 &model.diffuse_texture,
                 &model.normal_texture_global,
                 &model.specular_texture,
+                Some(PhongShadowInput::new(
+                    shadow_m * (viewport * uniform_m).inverse(),
+                    shadow_buffer,
+                )),
             );
 
             image.model_shader(&model, &shader);
