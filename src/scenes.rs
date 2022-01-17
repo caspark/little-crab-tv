@@ -231,7 +231,7 @@ pub fn render_scene(
                 uniform_m,
                 light_dir,
                 &model.diffuse_texture,
-                &model.normal_texture_global,
+                &model.normal_texture_darboux,
                 &model.specular_texture,
                 None,
             );
@@ -265,7 +265,7 @@ pub fn render_scene(
                 uniform_m,
                 light_dir,
                 &model.diffuse_texture,
-                &model.normal_texture_global,
+                &model.normal_texture_darboux,
                 &model.specular_texture,
                 Some(PhongShadowInput::new(
                     shadow_m * (viewport * uniform_m).inverse(),
@@ -299,7 +299,7 @@ pub fn render_scene(
                 uniform_m,
                 light_dir,
                 &model.diffuse_texture,
-                &model.normal_texture_global,
+                &model.normal_texture_darboux,
                 &model.specular_texture,
                 Some(PhongShadowInput::new(
                     shadow_m * (viewport * uniform_m).inverse(),

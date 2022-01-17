@@ -131,7 +131,7 @@ pub struct NormalShader<'t> {
     uniform_mit: Mat4,
     light_dir: Vec3,
     diffuse_texture: &'t Texture,
-    /// normal texture must be in global coordinates
+    /// normal texture must be in global coordinates (not tangent space)
     normal_texture: &'t Texture,
 }
 
@@ -201,10 +201,12 @@ pub struct PhongShadowInput {
 
 pub struct PhongShaderState {
     varying_tri: Mat3,
+    varying_nrm: Mat3,
     varying_uv: [Vec2; 3],
 }
 
-/// A shader that handles normals correctly based on a global normal map
+/// Phong shader renders using ambient/diffuse/specular lighting model, with normals rendered using
+/// a tangent space normal map.
 #[derive(Clone, Debug)]
 pub struct PhongShader<'t> {
     viewport: Mat4,
@@ -214,7 +216,7 @@ pub struct PhongShader<'t> {
     uniform_mit: Mat4,
     light_dir: Vec3,
     diffuse_texture: &'t Texture,
-    /// normal texture must be in global coordinates
+    /// normal texture must be in tangent space coordinates
     normal_texture: &'t Texture,
     specular_texture: &'t Texture,
     shadows: Option<PhongShadowInput>,
@@ -226,7 +228,7 @@ impl<'t> PhongShader<'t> {
         uniform_m: Mat4,
         light_dir: Vec3,
         diffuse_texture: &'t Texture,
-        normal_texture_global: &'t Texture,
+        normal_texture_darboux: &'t Texture,
         specular_texture: &'t Texture,
         shadows: Option<PhongShadowInput>,
     ) -> PhongShader<'t> {
@@ -238,7 +240,7 @@ impl<'t> PhongShader<'t> {
             uniform_mit: uniform_m.inverse().transpose(),
             light_dir,
             diffuse_texture,
-            normal_texture: normal_texture_global,
+            normal_texture: normal_texture_darboux,
             specular_texture,
             shadows,
         }
@@ -247,9 +249,12 @@ impl<'t> PhongShader<'t> {
 
 impl Shader<PhongShaderState> for PhongShader<'_> {
     fn vertex(&self, input: [Vertex; 3]) -> (Mat3, PhongShaderState) {
+        let mut varying_nrm = Mat3::ZERO;
         let mut varying_tri = Mat3::ZERO;
         let mut varying_uv = [Vec2::ZERO; 3];
         for (i, vert) in input.iter().enumerate() {
+            *varying_nrm.col_mut(i) = self.uniform_mit.transform_vector3(vert.normal.normalize());
+
             *varying_tri.col_mut(i) =
                 (self.viewport * self.uniform_m).project_point3(vert.position);
 
@@ -262,6 +267,7 @@ impl Shader<PhongShaderState> for PhongShader<'_> {
         (
             varying_tri,
             PhongShaderState {
+                varying_nrm,
                 varying_tri,
                 varying_uv,
             },
@@ -272,7 +278,47 @@ impl Shader<PhongShaderState> for PhongShader<'_> {
         let PhongShaderState {
             varying_tri,
             varying_uv,
+            varying_nrm,
         } = *state;
+
+        let bn = (varying_nrm * barycentric_coords).normalize();
+        let uv = varying_uv[0] * barycentric_coords[0]
+            + varying_uv[1] * barycentric_coords[1]
+            + varying_uv[2] * barycentric_coords[2];
+
+        let A = {
+            let mut A = Mat3::ZERO;
+            *A.col_mut(0) = varying_tri.col(1) - varying_tri.col(0);
+            *A.col_mut(1) = varying_tri.col(2) - varying_tri.col(0);
+            *A.col_mut(2) = bn;
+            A.transpose()
+        };
+        let AI = A.inverse();
+
+        let i = AI
+            * Vec3::new(
+                varying_uv[1].x - varying_uv[0].x,
+                varying_uv[2].x - varying_uv[0].x,
+                0.0,
+            );
+        let j = AI
+            * Vec3::new(
+                varying_uv[1].y - varying_uv[0].y,
+                varying_uv[2].y - varying_uv[0].y,
+                0.0,
+            );
+
+        let B = {
+            let mut B = Mat3::ZERO;
+            *B.col_mut(0) = i.normalize();
+            *B.col_mut(1) = j.normalize();
+            *B.col_mut(2) = bn;
+            B
+        };
+
+        let n = (B * self.normal_texture.get_normal(uv)).normalize();
+
+        let diffuse_intensity = crab_tv::yolo_max(0.0, n.dot(self.light_dir));
 
         let shaded = if let Some(PhongShadowInput {
             uniform_m_shadow,
@@ -295,14 +341,10 @@ impl Shader<PhongShaderState> for PhongShader<'_> {
 
         let shadow = if shaded { 0.3 } else { 1.0 };
 
-        let uv = varying_uv[0] * barycentric_coords[0]
-            + varying_uv[1] * barycentric_coords[1]
-            + varying_uv[2] * barycentric_coords[2];
-
-        let n = self
-            .uniform_mit
-            .project_point3(self.normal_texture.get_normal(uv))
-            .normalize();
+        // let n = self
+        //     .uniform_mit
+        //     .project_point3(self.normal_texture.get_normal(uv))
+        //     .normalize();
         let l = self.uniform_m.project_point3(self.light_dir).normalize();
         let r = (n * (n.dot(l) * 2.0) - l).normalize(); // reflected light
 
@@ -310,7 +352,7 @@ impl Shader<PhongShaderState> for PhongShader<'_> {
 
         // calculate lighting intensity for this pixel
         let ambient_intensity = 1.0;
-        let diffuse_intensity = crab_tv::yolo_max(0.0, n.dot(l));
+        // let diffuse_intensity = crab_tv::yolo_max(0.0, n.dot(l));
         let specular_intensity =
             crab_tv::yolo_max(0.0, r.z).powf(self.specular_texture.get_specular(uv));
 
