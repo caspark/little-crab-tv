@@ -311,14 +311,14 @@ impl Shader<PhongShaderState> for PhongShader<'_> {
         let unlit_color = self.diffuse_texture.get_pixel(uv);
 
         // calculate lighting intensity for this pixel
-        let ambient_intensity = 20.0;
+        let ambient_intensity = 1.0;
         let diffuse_intensity = crab_tv::yolo_max(0.0, n.dot(l));
         let specular_intensity =
             crab_tv::yolo_max(0.0, r.z).powf(self.specular_texture.get_specular(uv));
 
         // phong shading weights of each light component
         let ambient_weight = 1.0;
-        let diffuse_weight = 1.2;
+        let diffuse_weight = 1.0;
         let specular_weight = 0.6;
 
         Some(unlit_color.map(|comp| {
