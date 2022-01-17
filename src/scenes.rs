@@ -38,11 +38,12 @@ pub enum RenderScene {
     MovableCamera,
     ReimplementAsShader,
     GouraudIntensitiesBucketed,
-    GouraudNormalAsDiffuse,
+    NormalGlobalAsDiffuse,
     NormalShader,
+    NormalTangentAsDiffuse,
     PhongShader,
     ShadowBuffer,
-    Shadows,
+    Shadowed,
     ScreenSpaceAmbientOcclusionCalculated,
     ScreenSpaceAmbientOcclusion,
 }
@@ -198,14 +199,9 @@ pub fn render_scene(
 
             image.model_shader(model, &shader);
         }
-        RenderScene::GouraudNormalAsDiffuse => {
-            let shader = crate::shaders::GouraudShader::new(
-                viewport,
-                uniform_m,
-                light_dir,
-                Some(&model.normal_texture_global),
-                false,
-            );
+        RenderScene::NormalGlobalAsDiffuse => {
+            let shader =
+                crate::shaders::UnlitShader::new(viewport, uniform_m, &model.normal_texture_global);
 
             image.model_shader(model, &shader);
         }
@@ -216,6 +212,15 @@ pub fn render_scene(
                 light_dir,
                 &model.diffuse_texture,
                 &model.normal_texture_global,
+            );
+
+            image.model_shader(model, &shader);
+        }
+        RenderScene::NormalTangentAsDiffuse => {
+            let shader = crate::shaders::UnlitShader::new(
+                viewport,
+                uniform_m,
+                &model.normal_texture_darboux,
             );
 
             image.model_shader(model, &shader);
@@ -242,7 +247,7 @@ pub fn render_scene(
 
             image.model_shader(model, &shader);
         }
-        RenderScene::Shadows => {
+        RenderScene::Shadowed => {
             let mut shadow_buffer = image.clone();
 
             let shadow_modelview_transform =

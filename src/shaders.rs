@@ -4,8 +4,6 @@ use glam::{Mat3, Mat4, Vec2, Vec3, Vec4};
 use crab_tv::{Canvas, Shader, Texture, Vertex};
 use rgb::{ComponentMap, RGB8};
 
-#[derive(Clone, Debug)]
-
 pub struct GouraudShaderState {
     varying_uv: [Vec2; 3],
     varying_light_intensity: [f32; 3],
@@ -327,6 +325,55 @@ impl Shader<PhongShaderState> for PhongShader<'_> {
                     * (diffuse_weight * diffuse_intensity + specular_weight * specular_intensity))
                 as u8
         }))
+    }
+}
+
+type UnlitShaderState = [Vec2; 3];
+
+/// A shader that renders a texture but doesn't do any lighting
+#[derive(Clone, Debug)]
+pub struct UnlitShader<'t> {
+    vertex_transform: Mat4,
+    texture: &'t Texture,
+}
+
+impl<'t> UnlitShader<'t> {
+    pub fn new(
+        viewport: Mat4,
+        uniform_m: Mat4, // projection matrix * modelview matrix
+        texture: &'t Texture,
+    ) -> UnlitShader<'t> {
+        Self {
+            vertex_transform: viewport * uniform_m,
+            texture,
+        }
+    }
+}
+
+impl Shader<UnlitShaderState> for UnlitShader<'_> {
+    fn vertex(&self, input: [Vertex; 3]) -> (Mat3, UnlitShaderState) {
+        let mut varying_tri = Mat3::ZERO;
+        let mut varying_uv = [Vec2::ZERO; 3];
+        for (i, vert) in input.iter().enumerate() {
+            *varying_tri.col_mut(i) = self.vertex_transform.project_point3(vert.position);
+
+            varying_uv[i] = Vec2::new(
+                vert.uv.x * self.texture.width as f32,
+                vert.uv.y * self.texture.height as f32,
+            )
+        }
+
+        (varying_tri, varying_uv)
+    }
+
+    fn fragment(&self, barycentric_coords: Vec3, varying_uv: &UnlitShaderState) -> Option<RGB8> {
+        let uv = varying_uv[0] * barycentric_coords[0]
+            + varying_uv[1] * barycentric_coords[1]
+            + varying_uv[2] * barycentric_coords[2];
+
+        let unlit_color = self.texture.get_pixel(uv);
+
+        Some(unlit_color)
     }
 }
 
