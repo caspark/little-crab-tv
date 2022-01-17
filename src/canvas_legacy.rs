@@ -504,7 +504,7 @@ impl Canvas {
                 for k in 0..3 {
                     pixel_z += pts[k][2] * bc_screen[k];
                 }
-                let z_buf_for_pixel = self.z_buffer_at(i, j);
+                let z_buf_for_pixel = self.z_buffer_at_mut(i, j);
                 if *z_buf_for_pixel < pixel_z {
                     *z_buf_for_pixel = pixel_z;
                     *self.pixel_mut(i, j) = color;
@@ -542,7 +542,7 @@ impl Canvas {
                 for k in 0..3 {
                     pixel_z += pts[k][2] * bc_screen[k];
                 }
-                let z_buf_for_pixel = self.z_buffer_at(i, j);
+                let z_buf_for_pixel = self.z_buffer_at_mut(i, j);
                 if *z_buf_for_pixel < pixel_z {
                     *z_buf_for_pixel = pixel_z;
 
@@ -588,7 +588,7 @@ impl Canvas {
                 for k in 0..3 {
                     pixel_z += pts[k][2] * bc_screen[k];
                 }
-                let z_buf_for_pixel = self.z_buffer_at(i, j);
+                let z_buf_for_pixel = self.z_buffer_at_mut(i, j);
                 if *z_buf_for_pixel < pixel_z {
                     *z_buf_for_pixel = pixel_z;
 

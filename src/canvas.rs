@@ -1,5 +1,7 @@
+use std::f32::consts::PI;
+
 use glam::{Mat3, Vec2, Vec3};
-use rgb::RGB8;
+use rgb::{ComponentMap, RGB8};
 
 use crate::{
     maths::{self, yolo_max, yolo_min},
@@ -93,7 +95,24 @@ impl Canvas {
     }
 
     #[inline]
-    pub fn z_buffer_at(&mut self, x: i32, y: i32) -> &mut f32 {
+    pub fn z_buffer_at(&self, x: i32, y: i32) -> f32 {
+        debug_assert!(
+            x >= 0 && x < self.width as i32,
+            "x coordinate of '{}' is out of bounds 0 to {}",
+            x,
+            self.width as i32
+        );
+        debug_assert!(
+            y >= 0 && y < self.height as i32,
+            "y coordinate of '{}' is out of bounds 0 to {}",
+            y,
+            self.height as i32
+        );
+        self.z_buffer[y as usize * self.width + x as usize]
+    }
+
+    #[inline]
+    pub fn z_buffer_at_mut(&mut self, x: i32, y: i32) -> &mut f32 {
         debug_assert!(
             x >= 0 && x < self.width as i32,
             "x coordinate of '{}' is out of bounds 0 to {}",
@@ -186,7 +205,7 @@ impl Canvas {
                 for k in 0..3 {
                     pixel_z += pts.col(k)[2] * bc_screen[k];
                 }
-                let z_buf_for_pixel = self.z_buffer_at(i, j);
+                let z_buf_for_pixel = self.z_buffer_at_mut(i, j);
                 if *z_buf_for_pixel < pixel_z {
                     let maybe_color = shader.fragment(bc_screen, &shader_state);
                     if let Some(color) = maybe_color {
@@ -197,4 +216,61 @@ impl Canvas {
             }
         }
     }
+
+    pub fn apply_ambient_occlusion(&mut self, strength: f32, ambient_occlusion_passes: usize) {
+        for x in 0..self.width() {
+            for y in 0..self.height() {
+                if (*self.z_buffer_at_mut(x as i32, y as i32)) < -1e5 {
+                    continue;
+                }
+
+                let mut total = 0.0;
+                let mut a = 0.0;
+                while a < PI * 2.0 - 1e-4 {
+                    total += PI / 2.0
+                        - max_elevation_angle(
+                            self,
+                            Vec2::new(x as f32, y as f32),
+                            Vec2::new(a.cos(), a.sin()),
+                            ambient_occlusion_passes,
+                        );
+                    a += PI / 4.0;
+                }
+
+                total /= PI / 2.0 * 8.0;
+                total = total.powf(strength);
+                *self.pixel_mut(x as i32, y as i32) = self
+                    .pixel(x as i32, y as i32)
+                    .map(|c| (total * c as f32) as u8);
+            }
+        }
+    }
+}
+
+fn max_elevation_angle(image: &Canvas, p: Vec2, dir: Vec2, samples: usize) -> f32 {
+    let mut max_angle = 0.0;
+
+    let mut t = 0.0;
+    while t < samples as f32 {
+        let cur = p + dir * t;
+        t += 1.0;
+
+        if cur.x >= image.width() as f32
+            || cur.y >= image.height() as f32
+            || cur.x < 0.0
+            || cur.y < 0.0
+        {
+            return max_angle;
+        }
+
+        let distance = (p - cur).length();
+        if distance < 1.0 {
+            continue;
+        }
+
+        let elevation = image.z_buffer_at(cur.x as i32, cur.y as i32)
+            - image.z_buffer_at(p.x as i32, p.y as i32);
+        max_angle = max_angle.max((elevation / distance).atan());
+    }
+    return max_angle;
 }

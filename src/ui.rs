@@ -132,6 +132,8 @@ impl RendererApp {
             input.camera_look_from,
             input.camera_look_at,
             input.camera_up,
+            input.ambient_occlusion_passes,
+            input.ambient_occlusion_strength,
         )
         .unwrap();
 
@@ -263,6 +265,20 @@ impl epi::App for RendererApp {
                         ui.add(
                             egui::Slider::new(&mut self.config.camera_distance, 1.0..=10.0)
                                 .text("Camera perspective distance"),
+                        );
+                        ui.end_row();
+
+                        ui.add(
+                            egui::Slider::new(&mut self.config.ambient_occlusion_passes, 1..=15)
+                                .text("Ambient occlusion passes"),
+                        );
+                        ui.end_row();
+                        ui.add(
+                            egui::Slider::new(
+                                &mut self.config.ambient_occlusion_strength,
+                                1.0..=10.0,
+                            )
+                            .text("Ambient occlusion strength"),
                         );
                         ui.end_row();
                     });

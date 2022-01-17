@@ -42,6 +42,8 @@ pub enum RenderScene {
     PhongShader,
     ShadowBuffer,
     Shadows,
+    ScreenSpaceAmbientOcclusionCalculated,
+    ScreenSpaceAmbientOcclusion,
 }
 
 pub fn render_scene(
@@ -53,6 +55,8 @@ pub fn render_scene(
     camera_look_from: Vec3,
     camera_look_at: Vec3,
     camera_up: Vec3,
+    ambient_occlusion_passes: usize,
+    ambient_occlusion_strength: f32,
 ) -> Result<()> {
     println!("Rendering scene: {}", scene);
 
@@ -258,13 +262,47 @@ pub fn render_scene(
 
             image.model_shader(&model, &shader);
         }
+        RenderScene::ScreenSpaceAmbientOcclusionCalculated => {
+            let z_depth_shader = crate::shaders::PureColorShader::new(viewport, uniform_m);
+            image.model_shader(&model, &z_depth_shader);
+
+            image.apply_ambient_occlusion(10.0, ambient_occlusion_passes)
+        }
+        RenderScene::ScreenSpaceAmbientOcclusion => {
+            let mut shadow_buffer = image.clone();
+
+            let shadow_modelview_transform =
+                look_at_transform(light_dir, camera_look_at, camera_up);
+            let shadow_projection = Mat4::IDENTITY;
+            let shadow_buffer_shader = crate::shaders::DepthShader::new(
+                viewport,
+                shadow_projection * shadow_modelview_transform,
+            );
+            shadow_buffer.model_shader(&model, &shadow_buffer_shader);
+            let shadow_m = viewport * shadow_projection * shadow_modelview_transform;
+
+            let shader = crate::shaders::PhongShader::new(
+                viewport,
+                uniform_m,
+                light_dir,
+                &model.diffuse_texture,
+                &model.normal_texture_global,
+                &model.specular_texture,
+                Some(PhongShadowInput::new(
+                    shadow_m * (viewport * uniform_m).inverse(),
+                    shadow_buffer,
+                )),
+            );
+
+            image.model_shader(&model, &shader);
+            image.apply_ambient_occlusion(ambient_occlusion_strength, ambient_occlusion_passes)
+        }
     }
 
     image.flip_y();
 
     Ok(())
 }
-
 #[cfg(test)]
 mod tests {
     use std::path::Path;
@@ -290,6 +328,7 @@ mod tests {
                 Vec3::new(0.0, 0.0, 3.0),
                 Vec3::ZERO,
                 Vec3::new(0.0, 1.0, 0.0),
+                10,
             )?;
         }
         Ok(())

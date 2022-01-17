@@ -38,11 +38,11 @@ impl<'t> GouraudShader<'t> {
 
 impl Shader<GouraudShaderState> for GouraudShader<'_> {
     fn vertex(&self, input: [Vertex; 3]) -> (Mat3, GouraudShaderState) {
-        let mut varying_pos = Mat3::ZERO;
+        let mut varying_tri = Mat3::ZERO;
         let mut varying_uv = [Vec2::ZERO; 3];
         let mut varying_light_intensity = [0f32; 3];
         for (i, vert) in input.iter().enumerate() {
-            *varying_pos.col_mut(i) = {
+            *varying_tri.col_mut(i) = {
                 // Transform the vertex position
                 // step 1 - embed into 4D space by converting to homogeneous coordinates
                 let mut vec4: Vec4 = (vert.position, 1.0).into();
@@ -67,7 +67,7 @@ impl Shader<GouraudShaderState> for GouraudShader<'_> {
         }
 
         (
-            varying_pos,
+            varying_tri,
             GouraudShaderState {
                 varying_uv,
                 varying_light_intensity,
@@ -158,10 +158,10 @@ impl<'t> NormalShader<'t> {
 
 impl Shader<VertexUVs> for NormalShader<'_> {
     fn vertex(&self, input: [Vertex; 3]) -> (Mat3, VertexUVs) {
-        let mut varying_pos = Mat3::ZERO;
+        let mut varying_tri = Mat3::ZERO;
         let mut varying_uv = [Vec2::ZERO; 3];
         for (i, vert) in input.iter().enumerate() {
-            *varying_pos.col_mut(i) =
+            *varying_tri.col_mut(i) =
                 (self.viewport * self.uniform_m).project_point3(vert.position);
 
             varying_uv[i] = Vec2::new(
@@ -170,7 +170,7 @@ impl Shader<VertexUVs> for NormalShader<'_> {
             );
         }
 
-        (varying_pos, varying_uv)
+        (varying_tri, varying_uv)
     }
 
     fn fragment(&self, barycentric_coords: Vec3, varying_uv: &VertexUVs) -> Option<RGB8> {
@@ -332,7 +332,7 @@ impl Shader<PhongShaderState> for PhongShader<'_> {
 
 type DepthVaryingTri = Mat3;
 
-/// Depth shader
+/// Depth shader, used for calculating shadows
 #[derive(Clone, Debug)]
 pub struct DepthShader {
     viewport: Mat4,
@@ -351,21 +351,51 @@ impl DepthShader {
 
 impl Shader<DepthVaryingTri> for DepthShader {
     fn vertex(&self, input: [Vertex; 3]) -> (Mat3, DepthVaryingTri) {
-        let mut varying_pos = Mat3::ZERO;
         let mut varying_tri = Mat3::ZERO;
         for (i, vert) in input.iter().enumerate() {
-            *varying_pos.col_mut(i) =
+            *varying_tri.col_mut(i) =
                 (self.viewport * self.uniform_m).project_point3(vert.position);
-
-            *varying_tri.col_mut(i) = varying_pos.col(i);
         }
 
-        (varying_pos, varying_tri)
+        (varying_tri, varying_tri)
     }
 
     fn fragment(&self, barycentric_coords: Vec3, varying_tri: &DepthVaryingTri) -> Option<RGB8> {
         let p = (*varying_tri) * barycentric_coords;
         let depth_scaled = p.z / crab_tv::DEPTH_MAX;
         Some(crab_tv::WHITE.map(|c| (c as f32 * depth_scaled) as u8))
+    }
+}
+
+/// Shades all fragments of the model as one uniform color
+#[derive(Clone, Debug)]
+pub struct PureColorShader {
+    viewport: Mat4,
+    /// projection matrix * modelview matrix
+    uniform_m: Mat4,
+}
+
+impl PureColorShader {
+    pub fn new(viewport: Mat4, uniform_m: Mat4) -> PureColorShader {
+        Self {
+            viewport,
+            uniform_m,
+        }
+    }
+}
+
+impl Shader<()> for PureColorShader {
+    fn vertex(&self, input: [Vertex; 3]) -> (Mat3, ()) {
+        let mut varying_tri = Mat3::ZERO;
+        for (i, vert) in input.iter().enumerate() {
+            *varying_tri.col_mut(i) =
+                (self.viewport * self.uniform_m).project_point3(vert.position);
+        }
+
+        (varying_tri, ())
+    }
+
+    fn fragment(&self, _barycentric_coords: Vec3, _: &()) -> Option<RGB8> {
+        Some(crab_tv::WHITE)
     }
 }
