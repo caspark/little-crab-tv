@@ -74,10 +74,8 @@ impl RenderConfig {
 
 impl Default for RenderConfig {
     fn default() -> Self {
-        use strum::IntoEnumIterator;
-
         Self {
-            scene: RenderScene::iter().last().unwrap(),
+            scene: RenderScene::default(),
             width: 1000,
             height: 1000,
             model: PathBuf::from("assets/african_head.obj"),

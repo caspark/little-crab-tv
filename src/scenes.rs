@@ -5,6 +5,7 @@ use crab_tv::{
     look_at_transform, viewport_transform, Canvas, Model, ModelShading, BLUE, CYAN, GREEN, RED,
     WHITE,
 };
+use strum::IntoEnumIterator;
 
 use crate::shaders::PhongShadowInput;
 
@@ -34,8 +35,8 @@ pub enum RenderScene {
     ModelTextured,
     ModelPerspective,
     ModelGouraud,
-    GouraudWithMovableCamera,
-    GouraudShaderRefactor,
+    MovableCamera,
+    ReimplementAsShader,
     GouraudIntensitiesBucketed,
     GouraudNormalAsDiffuse,
     NormalShader,
@@ -44,6 +45,12 @@ pub enum RenderScene {
     Shadows,
     ScreenSpaceAmbientOcclusionCalculated,
     ScreenSpaceAmbientOcclusion,
+}
+
+impl Default for RenderScene {
+    fn default() -> Self {
+        RenderScene::iter().last().unwrap()
+    }
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -163,13 +170,13 @@ pub fn render_scene(
             ModelShading::Gouraud,
             Some(projection_transform),
         ),
-        RenderScene::GouraudWithMovableCamera => image.model_fixed_function(
+        RenderScene::MovableCamera => image.model_fixed_function(
             model,
             light_dir,
             ModelShading::Gouraud,
             Some(projection_transform * model_view_transform),
         ),
-        RenderScene::GouraudShaderRefactor => {
+        RenderScene::ReimplementAsShader => {
             let shader = crate::shaders::GouraudShader::new(
                 viewport,
                 uniform_m,
