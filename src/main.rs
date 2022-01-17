@@ -99,7 +99,7 @@ impl Default for RenderConfig {
             camera_look_at: Vec3::ZERO,
             camera_up: Vec3::new(0.0, 1.0, 0.0),
             phong_lighting_weights: Vec3::new(1.0, 1.0, 0.6),
-            use_tangent_space_normal_map: false,
+            use_tangent_space_normal_map: true,
             shadow_darkness: 0.7,
             shadow_z_fix: 5.0,
             ambient_occlusion_passes: 5,

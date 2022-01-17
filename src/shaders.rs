@@ -320,37 +320,36 @@ impl Shader<PhongShaderState> for PhongShader<'_> {
             NormalMap::TangentSpace(normal_texture) => {
                 let bn = (varying_nrm * barycentric_coords).normalize();
 
-                let A = {
-                    let mut A = Mat3::ZERO;
-                    *A.col_mut(0) = varying_tri.col(1) - varying_tri.col(0);
-                    *A.col_mut(1) = varying_tri.col(2) - varying_tri.col(0);
-                    *A.col_mut(2) = bn;
-                    A.transpose()
+                let a_inverse = {
+                    let mut a = Mat3::ZERO;
+                    *a.col_mut(0) = varying_tri.col(1) - varying_tri.col(0);
+                    *a.col_mut(1) = varying_tri.col(2) - varying_tri.col(0);
+                    *a.col_mut(2) = bn;
+                    a.transpose().inverse()
                 };
-                let AI = A.inverse();
 
-                let i = AI
+                let i = a_inverse
                     * Vec3::new(
                         varying_uv[1].x - varying_uv[0].x,
                         varying_uv[2].x - varying_uv[0].x,
                         0.0,
                     );
-                let j = AI
+                let j = a_inverse
                     * Vec3::new(
                         varying_uv[1].y - varying_uv[0].y,
                         varying_uv[2].y - varying_uv[0].y,
                         0.0,
                     );
 
-                let B = {
-                    let mut B = Mat3::ZERO;
-                    *B.col_mut(0) = i.normalize();
-                    *B.col_mut(1) = j.normalize();
-                    *B.col_mut(2) = bn;
-                    B
+                let b = {
+                    let mut b = Mat3::ZERO;
+                    *b.col_mut(0) = i.normalize();
+                    *b.col_mut(1) = j.normalize();
+                    *b.col_mut(2) = bn;
+                    b
                 };
 
-                (B * normal_texture.get_normal(uv)).normalize()
+                (b * normal_texture.get_normal(uv)).normalize()
             }
         };
         let l = self.uniform_m.project_point3(self.light_dir).normalize();
