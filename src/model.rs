@@ -81,6 +81,7 @@ pub struct ModelInput {
     normal_texture_global: PathBuf,
     normal_texture_darboux: PathBuf,
     specular_texture: PathBuf,
+    glow_texture: Option<PathBuf>,
 }
 
 impl ModelInput {
@@ -101,6 +102,7 @@ pub struct Model {
     /// Normal texture in darboux frame (tangent space) - should be mostly blue
     pub normal_texture_darboux: Texture,
     pub specular_texture: Texture,
+    pub glow_texture: Option<Texture>,
 }
 
 impl Model {
@@ -126,12 +128,15 @@ impl Model {
         let specular_texture = Texture::validate(model.with_extension("specular.png").as_ref())
             .context("Validating specular texture failed")?;
 
+        let glow_texture = Texture::validate(model.with_extension("glow.png").as_ref()).ok();
+
         Ok(ModelInput {
             model: model.to_owned(),
             diffuse_texture,
             normal_texture_global,
             normal_texture_darboux,
             specular_texture,
+            glow_texture,
         })
     }
 
@@ -248,6 +253,11 @@ impl Model {
             .context("Loading (darboux frame) normal texture failed")?;
         let specular_texture = Texture::load_from_file(&input.specular_texture)
             .context("Loading specular texture failed")?;
+        let glow_texture = input.glow_texture.as_ref().and_then(|texture| {
+            Texture::load_from_file(&texture)
+                .context("Loading glow texture failed")
+                .ok()
+        });
 
         Ok(Self {
             vertices,
@@ -258,6 +268,7 @@ impl Model {
             normal_texture_global,
             normal_texture_darboux,
             specular_texture,
+            glow_texture,
         })
     }
 }

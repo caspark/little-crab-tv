@@ -70,6 +70,7 @@ pub fn render_scene(
     shadow_z_fix: f32,
     ambient_occlusion_passes: usize,
     ambient_occlusion_strength: f32,
+    enable_glow_map: bool,
 ) -> Result<()> {
     println!("Rendering scene: {}", scene);
 
@@ -96,6 +97,12 @@ pub fn render_scene(
         NormalMap::TangentSpace(&model.normal_texture_darboux)
     } else {
         NormalMap::GlobalSpace(&model.normal_texture_global)
+    };
+
+    let glow_texture = if enable_glow_map {
+        model.glow_texture.as_ref()
+    } else {
+        None
     };
 
     match scene {
@@ -245,6 +252,7 @@ pub fn render_scene(
                 phong_normal_map,
                 &model.specular_texture,
                 None,
+                glow_texture,
             );
 
             image.model_shader(model, &shader);
@@ -284,6 +292,7 @@ pub fn render_scene(
                     shadow_darkness,
                     shadow_z_fix,
                 )),
+                glow_texture,
             );
 
             image.model_shader(model, &shader);
@@ -320,6 +329,7 @@ pub fn render_scene(
                     shadow_darkness,
                     shadow_z_fix,
                 )),
+                glow_texture,
             );
 
             image.model_shader(model, &shader);
@@ -362,6 +372,7 @@ mod tests {
                 5.0,
                 5,
                 2.0,
+                true,
             )?;
         }
         Ok(())

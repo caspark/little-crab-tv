@@ -31,6 +31,7 @@ pub struct RenderConfig {
     shadow_z_fix: f32,
     ambient_occlusion_passes: usize,
     ambient_occlusion_strength: f32,
+    enable_glow_map: bool,
     output_filename: String,
     display_actual_size: bool,
     auto_rerender: bool,
@@ -82,6 +83,7 @@ impl RenderConfig {
             shadow_z_fix: self.shadow_z_fix,
             ambient_occlusion_passes: self.ambient_occlusion_passes,
             ambient_occlusion_strength: self.ambient_occlusion_strength,
+            enable_glow_map: self.enable_glow_map,
         })
     }
 }
@@ -104,6 +106,7 @@ impl Default for RenderConfig {
             shadow_z_fix: 5.0,
             ambient_occlusion_passes: 5,
             ambient_occlusion_strength: 2.0,
+            enable_glow_map: true,
             output_filename: "target/output.png".to_owned(),
             display_actual_size: true,
             auto_rerender: true,
@@ -128,6 +131,7 @@ pub struct RenderInput {
     shadow_z_fix: f32,
     ambient_occlusion_passes: usize,
     ambient_occlusion_strength: f32,
+    enable_glow_map: bool,
 }
 
 fn main() {

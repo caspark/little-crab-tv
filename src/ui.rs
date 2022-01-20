@@ -157,6 +157,7 @@ impl RendererApp {
             input.shadow_z_fix,
             input.ambient_occlusion_passes,
             input.ambient_occlusion_strength,
+            input.enable_glow_map,
         )
         .unwrap();
 
@@ -341,6 +342,12 @@ impl epi::App for RendererApp {
                                 1.0..=10.0,
                             )
                             .text("Ambient occlusion strength"),
+                        );
+                        ui.end_row();
+
+                        ui.checkbox(
+                            &mut self.config.enable_glow_map,
+                            "Enable glow map (if available - e.g. for Diablo)",
                         );
                         ui.end_row();
                     });

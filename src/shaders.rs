@@ -246,6 +246,7 @@ pub struct PhongShader<'t> {
     normal_texture: NormalMap<'t>,
     specular_texture: &'t Texture,
     shadows: Option<PhongShadowInput>,
+    glow_texture: Option<&'t Texture>,
 }
 
 impl<'t> PhongShader<'t> {
@@ -258,6 +259,7 @@ impl<'t> PhongShader<'t> {
         normal_texture: NormalMap<'t>,
         specular_texture: &'t Texture,
         shadows: Option<PhongShadowInput>,
+        glow_texture: Option<&'t Texture>,
     ) -> PhongShader<'t> {
         Self {
             viewport,
@@ -269,6 +271,7 @@ impl<'t> PhongShader<'t> {
             normal_texture,
             specular_texture,
             shadows,
+            glow_texture,
         }
     }
 }
@@ -355,8 +358,6 @@ impl Shader<PhongShaderState> for PhongShader<'_> {
         let l = self.uniform_m.project_point3(self.light_dir).normalize();
         let r = (n * (n.dot(l) * 2.0) - l).normalize(); // reflected light
 
-        let unlit_color = self.diffuse_texture.get_pixel(uv);
-
         // calculate lighting intensity for this pixel
         let ambient_intensity = 1.0;
         let diffuse_intensity = crab_tv::yolo_max(0.0, n.dot(self.light_dir));
@@ -389,17 +390,32 @@ impl Shader<PhongShaderState> for PhongShader<'_> {
             1.0
         };
 
+        let glow = if let Some(glow_texture) = &self.glow_texture {
+            glow_texture.get_pixel(uv)
+        } else {
+            crab_tv::BLACK
+        };
+
         // phong shading weights of each light component
         let ambient_weight = self.phong_lighting_weights.x;
         let diffuse_weight = self.phong_lighting_weights.y;
         let specular_weight = self.phong_lighting_weights.z;
 
-        Some(unlit_color.map(|comp| {
-            (ambient_weight * ambient_intensity
-                + (comp as f32 * shadow_multiplier)
-                    * (diffuse_weight * diffuse_intensity + specular_weight * specular_intensity))
-                as u8
-        }))
+        let unlit_color = self.diffuse_texture.get_pixel(uv);
+
+        Some(
+            unlit_color
+                .iter()
+                .map(|c| {
+                    ambient_weight * ambient_intensity
+                        + (c as f32 * shadow_multiplier)
+                            * (diffuse_weight * diffuse_intensity
+                                + specular_weight * specular_intensity)
+                })
+                .zip(glow.iter())
+                .map(|(phong_comp, glow_comp)| (phong_comp * (1.0 + glow_comp as f32)) as u8)
+                .collect(),
+        )
     }
 }
 
