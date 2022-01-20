@@ -38,8 +38,10 @@ pub enum RenderScene {
     MovableCamera,
     ReimplementAsShader,
     GouraudIntensitiesBucketed,
+    DepthTestedTriangles,
     NormalGlobalAsDiffuse,
     NormalShader,
+    SpecularAsDiffuse,
     NormalTangentAsDiffuse,
     PhongShader,
     ShadowBuffer,
@@ -195,144 +197,176 @@ pub fn render_scene(
             Some(projection_transform * model_view_transform),
         ),
         RenderScene::ReimplementAsShader => {
-            let shader = crate::shaders::GouraudShader::new(
-                viewport,
-                uniform_m,
-                light_dir,
-                Some(&model.diffuse_texture),
-                false,
+            image.model_shader(
+                model,
+                &crate::shaders::GouraudShader::new(
+                    viewport,
+                    uniform_m,
+                    light_dir,
+                    Some(&model.diffuse_texture),
+                    false,
+                ),
             );
-
-            image.model_shader(model, &shader);
         }
         RenderScene::GouraudIntensitiesBucketed => {
-            let shader = crate::shaders::GouraudShader::new(
-                viewport,
-                uniform_m,
-                light_dir,
-                Some(&model.diffuse_texture),
-                true,
+            image.model_shader(
+                model,
+                &crate::shaders::GouraudShader::new(
+                    viewport,
+                    uniform_m,
+                    light_dir,
+                    Some(&model.diffuse_texture),
+                    true,
+                ),
             );
-
-            image.model_shader(model, &shader);
+        }
+        RenderScene::DepthTestedTriangles => {
+            image.model_shader(
+                model,
+                &crate::shaders::UnlitShader::triangles(viewport, uniform_m),
+            );
         }
         RenderScene::NormalGlobalAsDiffuse => {
-            let shader =
-                crate::shaders::UnlitShader::new(viewport, uniform_m, &model.normal_texture_global);
-
-            image.model_shader(model, &shader);
+            image.model_shader(
+                model,
+                &crate::shaders::UnlitShader::textured(
+                    viewport,
+                    uniform_m,
+                    &model.normal_texture_global,
+                ),
+            );
         }
         RenderScene::NormalShader => {
-            let shader = crate::shaders::NormalShader::new(
-                viewport,
-                uniform_m,
-                light_dir,
-                &model.diffuse_texture,
-                &model.normal_texture_global,
+            image.model_shader(
+                model,
+                &crate::shaders::NormalShader::new(
+                    viewport,
+                    uniform_m,
+                    light_dir,
+                    &model.diffuse_texture,
+                    &model.normal_texture_global,
+                ),
             );
-
-            image.model_shader(model, &shader);
+        }
+        RenderScene::SpecularAsDiffuse => {
+            image.model_shader(
+                model,
+                &crate::shaders::UnlitShader::textured(
+                    viewport,
+                    uniform_m,
+                    &model.specular_texture,
+                ),
+            );
         }
         RenderScene::NormalTangentAsDiffuse => {
-            let shader = crate::shaders::UnlitShader::new(
-                viewport,
-                uniform_m,
-                &model.normal_texture_darboux,
+            image.model_shader(
+                model,
+                &crate::shaders::UnlitShader::textured(
+                    viewport,
+                    uniform_m,
+                    &model.normal_texture_darboux,
+                ),
             );
-
-            image.model_shader(model, &shader);
         }
         RenderScene::PhongShader => {
-            let shader = crate::shaders::PhongShader::new(
-                viewport,
-                uniform_m,
-                light_dir,
-                phong_lighting_weights,
-                &model.diffuse_texture,
-                phong_normal_map,
-                &model.specular_texture,
-                None,
-                glow_texture,
+            image.model_shader(
+                model,
+                &crate::shaders::PhongShader::new(
+                    viewport,
+                    uniform_m,
+                    light_dir,
+                    phong_lighting_weights,
+                    &model.diffuse_texture,
+                    phong_normal_map,
+                    &model.specular_texture,
+                    None,
+                    glow_texture,
+                ),
             );
-
-            image.model_shader(model, &shader);
         }
         RenderScene::ShadowBuffer => {
-            let shader = crate::shaders::DepthShader::new(
-                viewport,
-                // NB: looking from the light position so that framebuffer is filled with shadow buffer
-                look_at_transform(light_dir, camera_look_at, camera_up),
+            image.model_shader(
+                model,
+                &crate::shaders::DepthShader::new(
+                    viewport,
+                    // NB: looking from the light position so that framebuffer is filled with shadow buffer
+                    look_at_transform(light_dir, camera_look_at, camera_up),
+                ),
             );
-
-            image.model_shader(model, &shader);
         }
         RenderScene::Shadowed => {
             let mut shadow_buffer = image.clone();
             let shadow_modelview_transform =
                 look_at_transform(light_dir, camera_look_at, camera_up);
             let shadow_projection = Mat4::IDENTITY;
-            let shadow_buffer_shader = crate::shaders::DepthShader::new(
-                viewport,
-                shadow_projection * shadow_modelview_transform,
+            shadow_buffer.model_shader(
+                model,
+                &crate::shaders::DepthShader::new(
+                    viewport,
+                    shadow_projection * shadow_modelview_transform,
+                ),
             );
-            shadow_buffer.model_shader(model, &shadow_buffer_shader);
             let shadow_m = viewport * shadow_projection * shadow_modelview_transform;
 
-            let shader = crate::shaders::PhongShader::new(
-                viewport,
-                uniform_m,
-                light_dir,
-                phong_lighting_weights,
-                &model.diffuse_texture,
-                phong_normal_map,
-                &model.specular_texture,
-                Some(PhongShadowInput::new(
-                    shadow_m * (viewport * uniform_m).inverse(),
-                    shadow_buffer,
-                    shadow_darkness,
-                    shadow_z_fix,
-                )),
-                glow_texture,
+            image.model_shader(
+                model,
+                &crate::shaders::PhongShader::new(
+                    viewport,
+                    uniform_m,
+                    light_dir,
+                    phong_lighting_weights,
+                    &model.diffuse_texture,
+                    phong_normal_map,
+                    &model.specular_texture,
+                    Some(PhongShadowInput::new(
+                        shadow_m * (viewport * uniform_m).inverse(),
+                        shadow_buffer,
+                        shadow_darkness,
+                        shadow_z_fix,
+                    )),
+                    glow_texture,
+                ),
             );
-
-            image.model_shader(model, &shader);
         }
         RenderScene::ScreenSpaceAmbientOcclusionCalculated => {
             let z_depth_shader = crate::shaders::PureColorShader::new(viewport, uniform_m);
             image.model_shader(model, &z_depth_shader);
 
-            image.apply_ambient_occlusion(10.0, ambient_occlusion_passes)
+            image.apply_ambient_occlusion(ambient_occlusion_strength, ambient_occlusion_passes)
         }
         RenderScene::ScreenSpaceAmbientOcclusion => {
             let mut shadow_buffer = image.clone();
             let shadow_modelview_transform =
                 look_at_transform(light_dir, camera_look_at, camera_up);
             let shadow_projection = Mat4::IDENTITY;
-            let shadow_buffer_shader = crate::shaders::DepthShader::new(
-                viewport,
-                shadow_projection * shadow_modelview_transform,
+            shadow_buffer.model_shader(
+                model,
+                &crate::shaders::DepthShader::new(
+                    viewport,
+                    shadow_projection * shadow_modelview_transform,
+                ),
             );
-            shadow_buffer.model_shader(model, &shadow_buffer_shader);
             let shadow_m = viewport * shadow_projection * shadow_modelview_transform;
 
-            let shader = crate::shaders::PhongShader::new(
-                viewport,
-                uniform_m,
-                light_dir,
-                phong_lighting_weights,
-                &model.diffuse_texture,
-                phong_normal_map,
-                &model.specular_texture,
-                Some(PhongShadowInput::new(
-                    shadow_m * (viewport * uniform_m).inverse(),
-                    shadow_buffer,
-                    shadow_darkness,
-                    shadow_z_fix,
-                )),
-                glow_texture,
+            image.model_shader(
+                model,
+                &crate::shaders::PhongShader::new(
+                    viewport,
+                    uniform_m,
+                    light_dir,
+                    phong_lighting_weights,
+                    &model.diffuse_texture,
+                    phong_normal_map,
+                    &model.specular_texture,
+                    Some(PhongShadowInput::new(
+                        shadow_m * (viewport * uniform_m).inverse(),
+                        shadow_buffer,
+                        shadow_darkness,
+                        shadow_z_fix,
+                    )),
+                    glow_texture,
+                ),
             );
-
-            image.model_shader(model, &shader);
             image.apply_ambient_occlusion(ambient_occlusion_strength, ambient_occlusion_passes)
         }
     }

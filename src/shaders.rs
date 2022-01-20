@@ -413,30 +413,45 @@ impl Shader<PhongShaderState> for PhongShader<'_> {
                                 + specular_weight * specular_intensity)
                 })
                 .zip(glow.iter())
-                .map(|(phong_comp, glow_comp)| (phong_comp * (1.0 + glow_comp as f32)) as u8)
+                .map(|(phong_comp, glow_comp)| {
+                    (phong_comp * (1.0 + glow_comp as f32)).min(255.0) as u8
+                })
                 .collect(),
         )
     }
 }
 
-type UnlitShaderState = [Vec2; 3];
+pub struct UnlitShaderState {
+    varying_uv: [Vec2; 3],
+    triangle_color: RGB8,
+}
 
 /// A shader that renders a texture but doesn't do any lighting
 #[derive(Clone, Debug)]
 pub struct UnlitShader<'t> {
     vertex_transform: Mat4,
-    texture: &'t Texture,
+    texture: Option<&'t Texture>,
 }
 
 impl<'t> UnlitShader<'t> {
-    pub fn new(
+    pub fn textured(
         viewport: Mat4,
         uniform_m: Mat4, // projection matrix * modelview matrix
         texture: &'t Texture,
     ) -> UnlitShader<'t> {
         Self {
             vertex_transform: viewport * uniform_m,
-            texture,
+            texture: Some(texture),
+        }
+    }
+
+    pub fn triangles(
+        viewport: Mat4,
+        uniform_m: Mat4, // projection matrix * modelview matrix
+    ) -> UnlitShader<'t> {
+        Self {
+            vertex_transform: viewport * uniform_m,
+            texture: None,
         }
     }
 }
@@ -448,21 +463,37 @@ impl Shader<UnlitShaderState> for UnlitShader<'_> {
         for (i, vert) in input.iter().enumerate() {
             *varying_tri.col_mut(i) = self.vertex_transform.project_point3(vert.position);
 
-            varying_uv[i] = Vec2::new(
-                vert.uv.x * self.texture.width as f32,
-                vert.uv.y * self.texture.height as f32,
-            )
+            if let Some(texture) = self.texture {
+                varying_uv[i] = Vec2::new(
+                    vert.uv.x * texture.width as f32,
+                    vert.uv.y * texture.height as f32,
+                )
+            }
         }
 
-        (varying_tri, varying_uv)
+        (
+            varying_tri,
+            UnlitShaderState {
+                varying_uv,
+                triangle_color: crab_tv::random_color(),
+            },
+        )
     }
 
-    fn fragment(&self, barycentric_coords: Vec3, varying_uv: &UnlitShaderState) -> Option<RGB8> {
+    fn fragment(&self, barycentric_coords: Vec3, state: &UnlitShaderState) -> Option<RGB8> {
+        let UnlitShaderState {
+            varying_uv,
+            triangle_color,
+        } = state;
         let uv = varying_uv[0] * barycentric_coords[0]
             + varying_uv[1] * barycentric_coords[1]
             + varying_uv[2] * barycentric_coords[2];
 
-        let unlit_color = self.texture.get_pixel(uv);
+        let unlit_color = if let Some(texture) = self.texture {
+            texture.get_pixel(uv)
+        } else {
+            *triangle_color
+        };
 
         Some(unlit_color)
     }
