@@ -158,6 +158,7 @@ impl RendererApp {
             input.ambient_occlusion_passes,
             input.ambient_occlusion_strength,
             input.enable_glow_map,
+            input.base_shininess,
         )
         .unwrap();
 
@@ -200,6 +201,7 @@ impl epi::App for RendererApp {
     /// Called each time the UI needs repainting, which may be many times per second.
     /// Put your widgets into a `SidePanel`, `TopPanel`, `CentralPanel`, `Window` or `Area`.
     fn update(&mut self, ctx: &egui::CtxRef, frame: &mut epi::Frame<'_>) {
+        let mut force_rerender = false;
         egui::SidePanel::left("config_panel")
             // .resizable(false)
             .show(ctx, |ui| {
@@ -242,9 +244,13 @@ impl epi::App for RendererApp {
                             ui.label(" or ");
                             if ui.add(egui::widgets::Button::new("Head")).clicked() {
                                 self.config.model = "assets/head.obj".into();
+                                self.cached_model.take();
+                                force_rerender = true;
                             }
                             if ui.add(egui::widgets::Button::new("Diablo")).clicked() {
                                 self.config.model = "assets/diablo.obj".into();
+                                self.cached_model.take();
+                                force_rerender = true;
                             }
                         });
                         ui.end_row();
@@ -308,6 +314,11 @@ impl epi::App for RendererApp {
                         ui.add(
                             egui::Slider::new(&mut self.config.phong_lighting_weights.z, 0.0..=3.0)
                                 .text("Phong lighting: Specular weight"),
+                        );
+                        ui.end_row();
+                        ui.add(
+                            egui::Slider::new(&mut self.config.base_shininess, 0.1..=10.0)
+                                .text("Phong lighting: Specular shininess"),
                         );
                         ui.end_row();
 
@@ -375,7 +386,7 @@ impl epi::App for RendererApp {
                     match self.config.validate() {
                         Ok(input) => {
                             if self.config.auto_rerender {
-                                if config_before != self.config {
+                                if config_before != self.config || force_rerender {
                                     println!("Configuration change detected - auto-rerendering!");
                                     self.trigger_render(input, frame.tex_allocator());
                                 }

@@ -73,6 +73,7 @@ pub fn render_scene(
     ambient_occlusion_passes: usize,
     ambient_occlusion_strength: f32,
     enable_glow_map: bool,
+    base_shininess: f32,
 ) -> Result<()> {
     println!("Rendering scene: {}", scene);
 
@@ -281,6 +282,7 @@ pub fn render_scene(
                     &model.specular_texture,
                     None,
                     glow_texture,
+                    base_shininess,
                 ),
             );
         }
@@ -325,6 +327,7 @@ pub fn render_scene(
                         shadow_z_fix,
                     )),
                     glow_texture,
+                    base_shininess,
                 ),
             );
         }
@@ -365,6 +368,7 @@ pub fn render_scene(
                         shadow_z_fix,
                     )),
                     glow_texture,
+                    base_shininess,
                 ),
             );
             image.apply_ambient_occlusion(ambient_occlusion_strength, ambient_occlusion_passes)
@@ -407,6 +411,7 @@ mod tests {
                 5,
                 2.0,
                 true,
+                1.0,
             )?;
         }
         Ok(())

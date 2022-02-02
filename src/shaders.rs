@@ -247,6 +247,7 @@ pub struct PhongShader<'t> {
     specular_texture: &'t Texture,
     shadows: Option<PhongShadowInput>,
     glow_texture: Option<&'t Texture>,
+    base_shininess: f32,
 }
 
 impl<'t> PhongShader<'t> {
@@ -260,6 +261,7 @@ impl<'t> PhongShader<'t> {
         specular_texture: &'t Texture,
         shadows: Option<PhongShadowInput>,
         glow_texture: Option<&'t Texture>,
+        base_shininess: f32,
     ) -> PhongShader<'t> {
         Self {
             viewport,
@@ -272,6 +274,7 @@ impl<'t> PhongShader<'t> {
             specular_texture,
             shadows,
             glow_texture,
+            base_shininess,
         }
     }
 }
@@ -361,8 +364,8 @@ impl Shader<PhongShaderState> for PhongShader<'_> {
         // calculate lighting intensity for this pixel
         let ambient_intensity = 1.0;
         let diffuse_intensity = crab_tv::yolo_max(0.0, n.dot(self.light_dir));
-        let specular_intensity =
-            crab_tv::yolo_max(0.0, r.z).powf(self.specular_texture.get_specular(uv));
+        let specular_intensity = crab_tv::yolo_max(0.0, r.z)
+            .powf(self.base_shininess + self.specular_texture.get_specular(uv));
 
         // check if this pixel is shadowed according to the shadow buffer
         let shadow_multiplier = if let Some(PhongShadowInput {

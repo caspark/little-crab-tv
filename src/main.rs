@@ -32,6 +32,7 @@ pub struct RenderConfig {
     ambient_occlusion_passes: usize,
     ambient_occlusion_strength: f32,
     enable_glow_map: bool,
+    base_shininess: f32,
     output_filename: String,
     display_actual_size: bool,
     auto_rerender: bool,
@@ -84,6 +85,7 @@ impl RenderConfig {
             ambient_occlusion_passes: self.ambient_occlusion_passes,
             ambient_occlusion_strength: self.ambient_occlusion_strength,
             enable_glow_map: self.enable_glow_map,
+            base_shininess: self.base_shininess,
         })
     }
 }
@@ -107,6 +109,7 @@ impl Default for RenderConfig {
             ambient_occlusion_passes: 5,
             ambient_occlusion_strength: 2.0,
             enable_glow_map: true,
+            base_shininess: 5.0,
             output_filename: "target/output.png".to_owned(),
             display_actual_size: true,
             auto_rerender: true,
@@ -132,6 +135,7 @@ pub struct RenderInput {
     ambient_occlusion_passes: usize,
     ambient_occlusion_strength: f32,
     enable_glow_map: bool,
+    base_shininess: f32,
 }
 
 fn main() {

@@ -70,7 +70,7 @@ impl Texture {
     pub fn get_specular(&self, uv: Vec2) -> f32 {
         // we assume that each of the rgb channels have the same data and arbitrarily pick R to read
         // the specular from
-        self.get_pixel(uv).r as f32
+        self.get_pixel(uv).r as f32 / 255.0
     }
 }
 
