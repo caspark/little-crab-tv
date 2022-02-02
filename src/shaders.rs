@@ -397,7 +397,8 @@ impl Shader<PhongShaderState> for PhongShader<'_> {
             glow_texture.get_pixel(uv)
         } else {
             crab_tv::BLACK
-        };
+        }
+        .map(f32::from);
 
         // phong shading weights of each light component
         let ambient_weight = self.phong_lighting_weights.x;
@@ -417,7 +418,7 @@ impl Shader<PhongShaderState> for PhongShader<'_> {
                 })
                 .zip(glow.iter())
                 .map(|(phong_comp, glow_comp)| {
-                    (phong_comp * (1.0 + glow_comp as f32)).min(255.0) as u8
+                    crab_tv::yolo_max(phong_comp + glow_comp, glow_comp).min(255.0) as u8
                 })
                 .collect(),
         )
