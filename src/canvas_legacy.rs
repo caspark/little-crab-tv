@@ -126,7 +126,7 @@ impl Canvas {
         let derror2 = dy.abs() * 2;
         let mut error2 = 0;
         let mut y = y0;
-        for x in x0..x1 {
+        for x in x0..=x1 {
             if steep {
                 *self.pixel_mut(y as i32, x as i32) = color;
             } else {
