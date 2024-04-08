@@ -53,21 +53,39 @@ pub enum RenderScene {
 }
 
 impl RenderScene {
+    // pub(crate) fn demo_time(self) -> f32 {
+    //     match self {
+    //         RenderScene::FivePixels => 0.5,
+    //         RenderScene::Lines => 0.5,
+    //         RenderScene::ModelWireframe => 1.0,
+    //         RenderScene::TriangleLineSweepVerbose => 0.0,
+    //         RenderScene::TriangleLineSweepCompact => 0.0,
+    //         RenderScene::TriangleBarycentric => 0.5,
+    //         RenderScene::ModelColoredTriangles => 1.0,
+    //         RenderScene::ModelFlatShaded => 1.0,
+    //         RenderScene::DepthBuffer => 1.0,
+    //         RenderScene::ModelDepthTested => 1.0,
+    //         RenderScene::ModelTextured => 1.0,
+    //         RenderScene::ModelPerspective => 1.0,
+    //         RenderScene::ModelGouraud => 1.0,
+    //         RenderScene::MovableCamera => 1.0,
+    //         RenderScene::ReimplementAsShader => 1.0,
+    //         RenderScene::GouraudIntensitiesBucketed => 1.0,
+    //         RenderScene::DepthTestedTriangles => 1.0,
+    //         RenderScene::NormalGlobalAsDiffuse => 1.0,
+    //         RenderScene::NormalShader => 1.0,
+    //         RenderScene::SpecularAsDiffuse => 1.0,
+    //         RenderScene::NormalTangentAsDiffuse => 1.0,
+    //         RenderScene::PhongShader => 1.0,
+    //         RenderScene::ShadowBuffer => 1.0,
+    //         RenderScene::Shadowed => 1.0,
+    //         RenderScene::ScreenSpaceAmbientOcclusionCalculated => 1.0,
+    //         RenderScene::ScreenSpaceAmbientOcclusion => 2.0,
+    //     }
+    // }
+
     pub(crate) fn demo_time(self) -> f32 {
         match self {
-            RenderScene::FivePixels => 0.5,
-            RenderScene::Lines => 0.5,
-            RenderScene::ModelWireframe => 1.0,
-            RenderScene::TriangleLineSweepVerbose => 0.0,
-            RenderScene::TriangleLineSweepCompact => 0.0,
-            RenderScene::TriangleBarycentric => 0.5,
-            RenderScene::ModelColoredTriangles => 1.0,
-            RenderScene::ModelFlatShaded => 1.0,
-            RenderScene::DepthBuffer => 1.0,
-            RenderScene::ModelDepthTested => 1.0,
-            RenderScene::ModelTextured => 1.0,
-            RenderScene::ModelPerspective => 1.0,
-            RenderScene::ModelGouraud => 1.0,
             RenderScene::MovableCamera => 1.0,
             RenderScene::ReimplementAsShader => 1.0,
             RenderScene::GouraudIntensitiesBucketed => 1.0,
@@ -77,10 +95,10 @@ impl RenderScene {
             RenderScene::SpecularAsDiffuse => 1.0,
             RenderScene::NormalTangentAsDiffuse => 1.0,
             RenderScene::PhongShader => 1.0,
-            RenderScene::ShadowBuffer => 1.0,
             RenderScene::Shadowed => 1.0,
             RenderScene::ScreenSpaceAmbientOcclusionCalculated => 1.0,
-            RenderScene::ScreenSpaceAmbientOcclusion => 2.0,
+            RenderScene::ScreenSpaceAmbientOcclusion => 3.0,
+            _ => 0.0,
         }
     }
 
@@ -436,10 +454,8 @@ mod tests {
             render_scene(
                 &mut image,
                 &scene,
-                &Model::load_obj_file(&Model::validate(
-                    Path::new("assets/african_head.obj"),
-                )?)
-                .expect("model load should succeed"),
+                &Model::load_obj_file(&Model::validate(Path::new("assets/african_head.obj"))?)
+                    .expect("model load should succeed"),
                 Vec3::new(0.0, 0.0, -1.0),
                 3.0,
                 Vec3::new(0.0, 0.0, 3.0),

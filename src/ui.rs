@@ -245,8 +245,9 @@ impl epi::App for RendererApp {
                             if self.config.demo_mode_speed > 0.0 {
                                 self.config.demo_mode_time_in_scene +=
                                     self.config.demo_mode_speed * dt;
-                                if self.config.demo_mode_time_in_scene
-                                    > self.config.scene.demo_time()
+
+                                while self.config.demo_mode_time_in_scene
+                                    >= self.config.scene.demo_time()
                                 {
                                     self.config.scene = self.config.scene.next_scene();
                                     self.config.demo_mode_time_in_scene = 0.0;
