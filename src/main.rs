@@ -20,7 +20,11 @@ pub struct RenderConfig {
     width: usize,
     height: usize,
     model: PathBuf,
+    auto_rotate_model_speed: f32,
+    auto_rotate_model_angle: f32,
     light_dir: Vec3,
+    auto_rotate_light_speed: f32,
+    auto_rotate_light_angle: f32,
     camera_distance: f32,
     camera_look_from: Vec3,
     camera_look_at: Vec3,
@@ -41,6 +45,11 @@ pub struct RenderConfig {
 impl RenderConfig {
     pub(crate) fn image_pixel_count(&self) -> usize {
         self.width * self.height
+    }
+
+    pub(crate) fn always_re_render(&self) -> bool {
+        self.auto_rotate_light_speed > 0.0
+            || self.auto_rotate_model_speed > 0.0
     }
 
     pub(crate) fn validate(&self) -> Result<RenderInput> {
@@ -97,7 +106,11 @@ impl Default for RenderConfig {
             width: 1000,
             height: 1000,
             model: PathBuf::from("assets/head.obj"),
+            auto_rotate_model_speed: 0.1,
+            auto_rotate_model_angle: 0.0,
             light_dir: Vec3::new(0.0, 0.0, 1.0),
+            auto_rotate_light_speed: 0.1,
+            auto_rotate_light_angle: 0.0,
             camera_distance: 3.0,
             camera_look_from: Vec3::new(0.0, 0.0, 3.0),
             camera_look_at: Vec3::ZERO,

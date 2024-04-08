@@ -269,12 +269,28 @@ impl epi::App for RendererApp {
                         );
                         ui.end_row();
 
+                        ui.add(egui::Slider::new(&mut self.config.auto_rotate_model_speed, 0.0..=3.0).text("Auto-rotate model"));
+                        if self.config.auto_rotate_model_angle > 0.0 {
+                            self.config.auto_rotate_model_angle += self.config.auto_rotate_model_speed * std::f32::consts::FRAC_PI_4 / 60.0;
+                            let rotate = glam::Quat::from_rotation_y(self.config.auto_rotate_model_angle);
+                            self.config.camera_look_from = rotate * Vec3::new(0.0, 0.0, 3.0);
+                        }
+                        ui.end_row();
+
                         let light_dir_before = self.config.light_dir;
                         vec3_editor(ui, "Light Dir", &mut self.config.light_dir);
                         if light_dir_before != self.config.light_dir {
                             // only normalize if the chosen light direction has changed, otherwise
                             // this will cause a render loop for certain floating point values
                             self.config.light_dir = self.config.light_dir.normalize_or_zero();
+                        }
+                        ui.end_row();
+
+                        ui.add(egui::Slider::new(&mut self.config.auto_rotate_light_speed, 0.0..=3.0).text("Auto-rotate light"));
+                        if self.config.auto_rotate_light_speed > 0.0 {
+                            self.config.auto_rotate_light_angle += self.config.auto_rotate_light_speed * std::f32::consts::FRAC_PI_4 / 60.0;
+                            let rotate = glam::Quat::from_rotation_z(self.config.auto_rotate_light_angle);
+                            self.config.light_dir = rotate * Vec3::new(0.0, 1.0, 2.0);
                         }
                         ui.end_row();
 
@@ -428,6 +444,10 @@ impl epi::App for RendererApp {
                 });
             }
         });
+
+        if self.config.always_re_render() {
+            ctx.request_repaint();
+        }
     }
 }
 
