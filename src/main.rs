@@ -25,9 +25,11 @@ pub struct RenderConfig {
     height: usize,
     model: PathBuf,
     auto_rotate_camera_speed: f32,
+    #[serde(skip)]
     auto_rotate_camera_angle: f32,
     light_dir: Vec3,
     auto_rotate_light_speed: f32,
+    #[serde(skip)]
     auto_rotate_light_angle: f32,
     camera_distance: f32,
     camera_look_from: Vec3,

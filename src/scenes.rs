@@ -13,6 +13,7 @@ use crate::shaders::{NormalMap, PhongShadowInput};
     Copy,
     Clone,
     Debug,
+    Default,
     serde::Serialize,
     serde::Deserialize,
     strum::EnumIter,
@@ -22,6 +23,7 @@ use crate::shaders::{NormalMap, PhongShadowInput};
 )]
 #[strum(serialize_all = "title_case")]
 pub enum RenderScene {
+    #[default]
     FivePixels,
     Lines,
     ModelWireframe,
@@ -48,12 +50,6 @@ pub enum RenderScene {
     Shadowed,
     ScreenSpaceAmbientOcclusionCalculated,
     ScreenSpaceAmbientOcclusion,
-}
-
-impl Default for RenderScene {
-    fn default() -> Self {
-        RenderScene::iter().last().unwrap()
-    }
 }
 
 impl RenderScene {
