@@ -6,7 +6,7 @@ use eframe::{
     epi,
 };
 use glam::Vec3;
-use rgb::RGB8;
+use rgb::RGBA8;
 use strum::IntoEnumIterator;
 
 use crate::{RenderConfig, RenderInput, RenderScene};
@@ -15,7 +15,7 @@ use crate::{RenderConfig, RenderInput, RenderScene};
 struct UiData {
     last_render_width: usize,
     last_render_height: usize,
-    last_render_pixels: Vec<RGB8>,
+    last_render_pixels: Vec<RGBA8>,
     last_render_tex: Option<TextureId>,
 }
 
@@ -24,7 +24,7 @@ impl UiData {
         Self {
             last_render_width: width,
             last_render_height: height,
-            last_render_pixels: vec![RGB8 { r: 0, g: 0, b: 0 }; width * height],
+            last_render_pixels: vec![RGBA8 { r: 0, g: 0, b: 0, a: 255 }; width * height],
             ..Default::default()
         }
     }
@@ -38,7 +38,7 @@ impl UiData {
 
     fn store_image(
         &mut self,
-        pixels: &[RGB8],
+        pixels: &[RGBA8],
         tex_allocator: &mut dyn eframe::epi::TextureAllocator,
     ) {
         assert_eq!(
@@ -46,7 +46,7 @@ impl UiData {
             self.last_render_width * self.last_render_height
         );
 
-        self.last_render_pixels = pixels.iter().copied().collect();
+        self.last_render_pixels = pixels.to_vec();
 
         if let Some(existing_tex) = self.last_render_tex {
             tex_allocator.free(existing_tex);
@@ -167,7 +167,7 @@ impl RendererApp {
             .as_mut()
             .expect("ui data must be present for storing pixels");
 
-        data.store_image(image.into_pixels().as_slice(), tex_allocator);
+        data.store_image(image.pixels(), tex_allocator);
     }
 }
 

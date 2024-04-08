@@ -1,6 +1,6 @@
 /// Legacy canvas API, where only certain fixed functions are supported (no shaders).
 use glam::{IVec2, Mat4, Vec2, Vec3, Vec4};
-use rgb::{ComponentMap, RGB8};
+use rgb::{ComponentMap, RGBA8};
 
 use crate::{
     maths::{self, yolo_max, yolo_min},
@@ -19,7 +19,7 @@ pub enum ModelShading {
 impl Canvas {
     // incorrect because it depends on choosing the correct "increment", which will vary based on
     // how many pixels need to be drawn
-    pub fn line_naive1(&mut self, x0: i32, y0: i32, x1: i32, y1: i32, color: RGB8) {
+    pub fn line_naive1(&mut self, x0: i32, y0: i32, x1: i32, y1: i32, color: RGBA8) {
         let increment = 0.1;
         for i in 0..((1.0 / increment) as i32) {
             let i = f64::from(i) * increment;
@@ -30,16 +30,16 @@ impl Canvas {
     }
 
     // incorrect because it doesn't handle the case where the line is near vertical or x1 < x0
-    pub fn line_naive2(&mut self, x0: i32, y0: i32, x1: i32, y1: i32, color: RGB8) {
+    pub fn line_naive2(&mut self, x0: i32, y0: i32, x1: i32, y1: i32, color: RGBA8) {
         for x in x0..x1 {
             let t = (x - x0) as f64 / (x1 - x0) as f64;
-            let y = y0 as f64 * (1.0 - t) as f64 + y1 as f64 * t as f64;
-            *self.pixel_mut(x as i32, y as i32) = color;
+            let y = y0 as f64 * (1.0 - t) + y1 as f64 * t;
+            *self.pixel_mut(x, y as i32) = color;
         }
     }
 
     // Bresenham's algorithm 1 - correct but slow due to needing floating point maths
-    pub fn line_slow(&mut self, mut x0: i32, mut y0: i32, mut x1: i32, mut y1: i32, color: RGB8) {
+    pub fn line_slow(&mut self, mut x0: i32, mut y0: i32, mut x1: i32, mut y1: i32, color: RGBA8) {
         let steep = if (x0 - x1).abs() < (y0 - y1).abs() {
             std::mem::swap(&mut x0, &mut y0);
             std::mem::swap(&mut x1, &mut y1);
@@ -56,17 +56,17 @@ impl Canvas {
         let divisor = x1 - x0;
         for x in x0..x1 {
             let t = (x - x0) as f64 / divisor as f64;
-            let y = y0 as f64 * (1.0 - t) as f64 + y1 as f64 * t as f64;
+            let y = y0 as f64 * (1.0 - t) + y1 as f64 * t;
             if steep {
-                *self.pixel_mut(y as i32, x as i32) = color;
+                *self.pixel_mut(y as i32, x) = color;
             } else {
-                *self.pixel_mut(x as i32, y as i32) = color;
+                *self.pixel_mut(x, y as i32) = color;
             }
         }
     }
 
     // Bresenham's algorithm 2 - still using floating point maths but avoiding some division
-    pub fn line_faster(&mut self, mut x0: i32, mut y0: i32, mut x1: i32, mut y1: i32, color: RGB8) {
+    pub fn line_faster(&mut self, mut x0: i32, mut y0: i32, mut x1: i32, mut y1: i32, color: RGBA8) {
         let steep = if (x0 - x1).abs() < (y0 - y1).abs() {
             std::mem::swap(&mut x0, &mut y0);
             std::mem::swap(&mut x1, &mut y1);
@@ -106,7 +106,7 @@ impl Canvas {
         mut y0: i32,
         mut x1: i32,
         mut y1: i32,
-        color: RGB8,
+        color: RGBA8,
     ) {
         let steep = if (x0 - x1).abs() < (y0 - y1).abs() {
             std::mem::swap(&mut x0, &mut y0);
@@ -128,9 +128,9 @@ impl Canvas {
         let mut y = y0;
         for x in x0..=x1 {
             if steep {
-                *self.pixel_mut(y as i32, x as i32) = color;
+                *self.pixel_mut(y, x) = color;
             } else {
-                *self.pixel_mut(x as i32, y as i32) = color;
+                *self.pixel_mut(x, y) = color;
             }
             error2 += derror2;
             if error2 > dx {
@@ -140,13 +140,13 @@ impl Canvas {
         }
     }
 
-    pub fn line(&mut self, p1: IVec2, p2: IVec2, color: RGB8) {
+    pub fn line(&mut self, p1: IVec2, p2: IVec2, color: RGBA8) {
         let (x0, y0) = (p1.x, p1.y);
         let (x1, y1) = (p2.x, p2.y);
         self.line_fastest(x0, y0, x1, y1, color);
     }
 
-    pub fn model_wireframe(&mut self, model: &Model, color: RGB8) {
+    pub fn model_wireframe(&mut self, model: &Model, color: RGBA8) {
         for face in model.faces.iter() {
             for j in 0..3 {
                 let v0 = model.vertices[face.points[j].vertices_index];
@@ -301,10 +301,10 @@ impl Canvas {
                 let w = (avg_intensity * 255.0) as u8;
                 match shading {
                     ModelShading::FlatOnly => {
-                        self.triangle_barycentric(&screen_coords_2d, RGB8::new(w, w, w))
+                        self.triangle_barycentric(&screen_coords_2d, RGBA8::new(w, w, w, 255))
                     }
                     ModelShading::DepthTested => self
-                        .triangle_barycentric_depth_tested(&screen_coords_3d, RGB8::new(w, w, w)),
+                        .triangle_barycentric_depth_tested(&screen_coords_3d, RGBA8::new(w, w, w, 255)),
                     ModelShading::Textured => self.triangle_barycentric_texture(
                         &screen_coords_3d,
                         &model.diffuse_texture,
@@ -323,7 +323,7 @@ impl Canvas {
     }
 
     /// Output a wireframe (unfilled) triangle by using line drawing
-    pub fn triangle_wireframe(&mut self, t0: IVec2, t1: IVec2, t2: IVec2, color: RGB8) {
+    pub fn triangle_wireframe(&mut self, t0: IVec2, t1: IVec2, t2: IVec2, color: RGBA8) {
         self.line(t0, t1, color);
         self.line(t1, t2, color);
         self.line(t2, t0, color);
@@ -340,13 +340,13 @@ impl Canvas {
             (vertices[0], vertices[1], vertices[2])
         };
 
-        self.line(t2, t0, RGB8::new(255, 0, 0));
-        self.line(t0, t1, RGB8::new(0, 255, 0));
-        self.line(t1, t2, RGB8::new(0, 0, 255));
+        self.line(t2, t0, RGBA8::new(255, 0, 0, 255));
+        self.line(t0, t1, RGBA8::new(0, 255, 0, 255));
+        self.line(t1, t2, RGBA8::new(0, 0, 255, 255));
     }
 
     // Draw a filled triangle using line sweeping.
-    pub fn triangle_linesweep_verbose(&mut self, pts: &[IVec2], color: RGB8) {
+    pub fn triangle_linesweep_verbose(&mut self, pts: &[IVec2], color: RGBA8) {
         let (t0, t1, t2) = (pts[0], pts[1], pts[2]);
 
         if t0.y == t1.y && t0.y == t2.y {
@@ -416,7 +416,7 @@ impl Canvas {
     }
 
     // Draw a filled triangle using line sweeping, approach 2
-    pub fn triangle_linesweep_compact(&mut self, pts: &[IVec2], color: RGB8) {
+    pub fn triangle_linesweep_compact(&mut self, pts: &[IVec2], color: RGBA8) {
         let (t0, t1, t2) = (pts[0], pts[1], pts[2]);
 
         if t0.y == t1.y && t0.y == t2.y {
@@ -457,7 +457,7 @@ impl Canvas {
         }
     }
 
-    pub fn triangle_barycentric(&mut self, pts: &[IVec2], color: RGB8) {
+    pub fn triangle_barycentric(&mut self, pts: &[IVec2], color: RGBA8) {
         let mut bboxmin = IVec2::new((self.width() - 1) as i32, (self.height() - 1) as i32);
         let mut bboxmax = IVec2::new(0, 0);
         let clamp = IVec2::new((self.width() - 1) as i32, (self.height() - 1) as i32);
@@ -481,7 +481,7 @@ impl Canvas {
         }
     }
 
-    pub fn triangle_barycentric_depth_tested(&mut self, pts: &[Vec3], color: RGB8) {
+    pub fn triangle_barycentric_depth_tested(&mut self, pts: &[Vec3], color: RGBA8) {
         let mut bboxmin = Vec2::new((self.width() - 1) as f32, (self.height() - 1) as f32);
         let mut bboxmax = Vec2::new(0.0, 0.0);
         let clamp = Vec2::new((self.width() - 1) as f32, (self.height() - 1) as f32);
@@ -553,7 +553,7 @@ impl Canvas {
                     let color = tex.data[(tex.height - uv.y as usize) * tex.width + uv.x as usize]
                         .map(|comp| (comp as f32 * light_intensity) as u8);
 
-                    *self.pixel_mut(i, j) = color;
+                    *self.pixel_mut(i, j) = color.into();
                 }
             }
         }
@@ -604,7 +604,7 @@ impl Canvas {
                     let color = tex.data[(tex.height - uv.y as usize) * tex.width + uv.x as usize]
                         .map(|comp| (comp as f32 * weighted_light_intensity) as u8);
 
-                    *self.pixel_mut(i, j) = color;
+                    *self.pixel_mut(i, j) = color.into();
                 }
             }
         }

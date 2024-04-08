@@ -1,11 +1,10 @@
 use std::f32::consts::PI;
 
 use glam::{Mat3, Vec2, Vec3};
-use rgb::{ComponentMap, RGB8};
+use rgb::{ComponentMap, RGBA8};
 
 use crate::{
-    maths::{self, yolo_max, yolo_min},
-    Model, DEPTH_MAX,
+    maths::{self, yolo_max, yolo_min}, Model, CLEAR, DEPTH_MAX
 };
 
 #[derive(Copy, Clone, Debug, PartialEq, Default)]
@@ -17,14 +16,14 @@ pub struct Vertex {
 
 pub trait Shader<S> {
     fn vertex(&self, triangle: [Vertex; 3]) -> (Mat3, S);
-    fn fragment(&self, barycentric_coords: Vec3, state: &S) -> Option<RGB8>;
+    fn fragment(&self, barycentric_coords: Vec3, state: &S) -> Option<RGBA8>;
 }
 
 #[derive(Clone, Debug)]
 pub struct Canvas {
     width: usize,
     height: usize,
-    pixels: Vec<RGB8>,
+    pixels: Vec<RGBA8>,
     z_buffer: Vec<f32>,
 }
 
@@ -33,7 +32,7 @@ impl Canvas {
         Self {
             width,
             height,
-            pixels: vec![RGB8::default(); width * height],
+            pixels: vec![RGBA8::default(); width * height],
             z_buffer: vec![f32::NEG_INFINITY; width * height],
         }
     }
@@ -48,20 +47,16 @@ impl Canvas {
         self.height
     }
 
-    pub fn pixels(&self) -> &[RGB8] {
+    pub fn pixels(&self) -> &[RGBA8] {
         &self.pixels
     }
 
-    pub fn pixels_mut(&mut self) -> &mut [RGB8] {
+    pub fn pixels_mut(&mut self) -> &mut [RGBA8] {
         &mut self.pixels
     }
 
-    pub fn into_pixels(self) -> Vec<RGB8> {
-        self.pixels
-    }
-
     #[inline]
-    pub fn pixel(&self, x: i32, y: i32) -> RGB8 {
+    pub fn pixel(&self, x: i32, y: i32) -> RGBA8 {
         debug_assert!(
             x >= 0 && x < self.width as i32,
             "x coordinate of '{}' is out of bounds 0 to {}",
@@ -78,7 +73,7 @@ impl Canvas {
     }
 
     #[inline]
-    pub fn pixel_mut(&mut self, x: i32, y: i32) -> &mut RGB8 {
+    pub fn pixel_mut(&mut self, x: i32, y: i32) -> &mut RGBA8 {
         debug_assert!(
             x >= 0 && x < self.width as i32,
             "x coordinate of '{}' is out of bounds 0 to {}",
@@ -133,7 +128,7 @@ impl Canvas {
             .z_buffer
             .iter()
             .map(|d| (*d * 255.0 / DEPTH_MAX) as u8)
-            .map(|c| RGB8::new(c, c, c))
+            .map(|c| RGBA8::new(c, c, c, 255))
             .collect();
     }
 

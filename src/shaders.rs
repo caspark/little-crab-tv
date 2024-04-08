@@ -1,7 +1,7 @@
 use glam::{Mat3, Mat4, Vec2, Vec3, Vec4};
 
 use crab_tv::{Canvas, Shader, Texture, Vertex};
-use rgb::{ComponentMap, RGB8};
+use rgb::{ComponentMap, RGBA8};
 
 pub struct GouraudShaderState {
     varying_uv: [Vec2; 3],
@@ -72,7 +72,7 @@ impl Shader<GouraudShaderState> for GouraudShader<'_> {
         )
     }
 
-    fn fragment(&self, barycentric_coords: Vec3, state: &GouraudShaderState) -> Option<RGB8> {
+    fn fragment(&self, barycentric_coords: Vec3, state: &GouraudShaderState) -> Option<RGBA8> {
         let GouraudShaderState {
             varying_uv,
             varying_light_intensity: light_intensity,
@@ -170,7 +170,7 @@ impl Shader<VertexUVs> for NormalShader<'_> {
         (varying_tri, varying_uv)
     }
 
-    fn fragment(&self, barycentric_coords: Vec3, varying_uv: &VertexUVs) -> Option<RGB8> {
+    fn fragment(&self, barycentric_coords: Vec3, varying_uv: &VertexUVs) -> Option<RGBA8> {
         let uv = varying_uv[0] * barycentric_coords[0]
             + varying_uv[1] * barycentric_coords[1]
             + varying_uv[2] * barycentric_coords[2];
@@ -306,7 +306,7 @@ impl Shader<PhongShaderState> for PhongShader<'_> {
         )
     }
 
-    fn fragment(&self, barycentric_coords: Vec3, state: &PhongShaderState) -> Option<RGB8> {
+    fn fragment(&self, barycentric_coords: Vec3, state: &PhongShaderState) -> Option<RGBA8> {
         let PhongShaderState {
             varying_tri,
             varying_uv,
@@ -427,7 +427,7 @@ impl Shader<PhongShaderState> for PhongShader<'_> {
 
 pub struct UnlitShaderState {
     varying_uv: [Vec2; 3],
-    triangle_color: RGB8,
+    triangle_color: RGBA8,
 }
 
 /// A shader that renders a texture but doesn't do any lighting
@@ -484,7 +484,7 @@ impl Shader<UnlitShaderState> for UnlitShader<'_> {
         )
     }
 
-    fn fragment(&self, barycentric_coords: Vec3, state: &UnlitShaderState) -> Option<RGB8> {
+    fn fragment(&self, barycentric_coords: Vec3, state: &UnlitShaderState) -> Option<RGBA8> {
         let UnlitShaderState {
             varying_uv,
             triangle_color,
@@ -533,7 +533,7 @@ impl Shader<DepthVaryingTri> for DepthShader {
         (varying_tri, varying_tri)
     }
 
-    fn fragment(&self, barycentric_coords: Vec3, varying_tri: &DepthVaryingTri) -> Option<RGB8> {
+    fn fragment(&self, barycentric_coords: Vec3, varying_tri: &DepthVaryingTri) -> Option<RGBA8> {
         let p = (*varying_tri) * barycentric_coords;
         let depth_scaled = p.z / crab_tv::DEPTH_MAX;
         Some(crab_tv::WHITE.map(|c| (c as f32 * depth_scaled) as u8))
@@ -568,7 +568,7 @@ impl Shader<()> for PureColorShader {
         (varying_tri, ())
     }
 
-    fn fragment(&self, _barycentric_coords: Vec3, _: &()) -> Option<RGB8> {
+    fn fragment(&self, _barycentric_coords: Vec3, _: &()) -> Option<RGBA8> {
         Some(crab_tv::WHITE)
     }
 }

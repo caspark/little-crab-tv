@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 use anyhow::{anyhow, bail, Context, Result};
 use derive_more::Constructor;
 use glam::{Vec2, Vec3};
-use rgb::{ComponentMap, RGB8};
+use rgb::{ComponentMap, RGB8, RGBA8};
 
 #[derive(Clone, Copy, Debug, PartialEq, Constructor)]
 pub struct Vertex {
@@ -50,13 +50,13 @@ impl Texture {
         ))
     }
 
-    pub fn get_pixel(&self, uv: Vec2) -> RGB8 {
+    pub fn get_pixel(&self, uv: Vec2) -> RGBA8 {
         let x = uv.x as usize;
         let y = uv.y as usize;
         debug_assert!(x < self.width);
         debug_assert!(y < self.height);
 
-        self.data[(self.height - y as usize) * self.width + x as usize]
+        self.data[(self.height - y) * self.width + x].into()
     }
 
     pub fn get_normal(&self, uv: Vec2) -> Vec3 {
@@ -254,7 +254,7 @@ impl Model {
         let specular_texture = Texture::load_from_file(&input.specular_texture)
             .context("Loading specular texture failed")?;
         let glow_texture = input.glow_texture.as_ref().and_then(|texture| {
-            Texture::load_from_file(&texture)
+            Texture::load_from_file(texture)
                 .context("Loading glow texture failed")
                 .ok()
         });

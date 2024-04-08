@@ -2,7 +2,7 @@ use criterion::{black_box, criterion_group, criterion_main, Criterion};
 
 use crab_tv::{Canvas, WHITE};
 use glam::IVec2;
-use rgb::RGB8;
+use rgb::RGBA8;
 
 fn line_drawing(c: &mut Criterion) {
     let mut group = c.benchmark_group("line-drawing");
@@ -10,7 +10,7 @@ fn line_drawing(c: &mut Criterion) {
     group.bench_function("v1-slow", |b| {
         let mut image = Canvas::new(100, 100);
         b.iter(|| {
-            image.line_slow(0, 0, 99, 99, RGB8::new(255, 0, 0));
+            image.line_slow(0, 0, 99, 99, RGBA8::new(255, 0, 0));
         });
         black_box(image);
     });
@@ -18,7 +18,7 @@ fn line_drawing(c: &mut Criterion) {
     group.bench_function("v2-faster", |b| {
         let mut image = Canvas::new(100, 100);
         b.iter(|| {
-            image.line_faster(0, 0, 99, 99, RGB8::new(255, 0, 0));
+            image.line_faster(0, 0, 99, 99, RGBA8::new(255, 0, 0));
         });
         black_box(image);
     });
@@ -26,7 +26,7 @@ fn line_drawing(c: &mut Criterion) {
     group.bench_function("v3-integer maths", |b| {
         let mut image = Canvas::new(100, 100);
         b.iter(|| {
-            image.line_fastest(0, 0, 99, 99, RGB8::new(255, 0, 0));
+            image.line_fastest(0, 0, 99, 99, RGBA8::new(255, 0, 0));
         });
         black_box(image);
     });
