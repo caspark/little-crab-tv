@@ -24,7 +24,15 @@ impl UiData {
         Self {
             last_render_width: width,
             last_render_height: height,
-            last_render_pixels: vec![RGBA8 { r: 0, g: 0, b: 0, a: 255 }; width * height],
+            last_render_pixels: vec![
+                RGBA8 {
+                    r: 0,
+                    g: 0,
+                    b: 0,
+                    a: 255
+                };
+                width * height
+            ],
             ..Default::default()
         }
     }
@@ -201,6 +209,8 @@ impl epi::App for RendererApp {
     /// Called each time the UI needs repainting, which may be many times per second.
     /// Put your widgets into a `SidePanel`, `TopPanel`, `CentralPanel`, `Window` or `Area`.
     fn update(&mut self, ctx: &egui::CtxRef, frame: &mut epi::Frame<'_>) {
+        let dt = 1.0 / 60.0; // just hardcode 60hz
+
         let mut force_rerender = false;
         egui::SidePanel::left("config_panel")
             // .resizable(false)
@@ -222,9 +232,25 @@ impl epi::App for RendererApp {
 
                     ui.horizontal(|ui| {
                         ui.label("Scene");
+
                         ui.vertical(|ui| {
                             for scene in RenderScene::iter() {
                                 ui.radio_value(&mut self.config.scene, scene, format!("{}", scene));
+                            }
+
+                            ui.add(
+                                egui::Slider::new(&mut self.config.demo_mode_speed, 0.0..=5.0)
+                                    .text("Cycle speed"),
+                            );
+                            if self.config.demo_mode_speed > 0.0 {
+                                self.config.demo_mode_time_in_scene +=
+                                    self.config.demo_mode_speed * dt;
+                                if self.config.demo_mode_time_in_scene
+                                    > self.config.scene.demo_time()
+                                {
+                                    self.config.scene = self.config.scene.next_scene();
+                                    self.config.demo_mode_time_in_scene = 0.0;
+                                }
                             }
                         });
                     });
@@ -269,10 +295,17 @@ impl epi::App for RendererApp {
                         );
                         ui.end_row();
 
-                        ui.add(egui::Slider::new(&mut self.config.auto_rotate_model_speed, 0.0..=3.0).text("Auto-rotate model"));
+                        ui.add(
+                            egui::Slider::new(&mut self.config.auto_rotate_model_speed, 0.0..=3.0)
+                                .text("Auto-rotate model"),
+                        );
                         if self.config.auto_rotate_model_angle > 0.0 {
-                            self.config.auto_rotate_model_angle += self.config.auto_rotate_model_speed * std::f32::consts::FRAC_PI_4 / 60.0;
-                            let rotate = glam::Quat::from_rotation_y(self.config.auto_rotate_model_angle);
+                            self.config.auto_rotate_model_angle +=
+                                self.config.auto_rotate_model_speed
+                                    * std::f32::consts::FRAC_PI_4
+                                    * dt;
+                            let rotate =
+                                glam::Quat::from_rotation_y(self.config.auto_rotate_model_angle);
                             self.config.camera_look_from = rotate * Vec3::new(0.0, 0.0, 3.0);
                         }
                         ui.end_row();
@@ -286,10 +319,17 @@ impl epi::App for RendererApp {
                         }
                         ui.end_row();
 
-                        ui.add(egui::Slider::new(&mut self.config.auto_rotate_light_speed, 0.0..=3.0).text("Auto-rotate light"));
+                        ui.add(
+                            egui::Slider::new(&mut self.config.auto_rotate_light_speed, 0.0..=3.0)
+                                .text("Auto-rotate light"),
+                        );
                         if self.config.auto_rotate_light_speed > 0.0 {
-                            self.config.auto_rotate_light_angle += self.config.auto_rotate_light_speed * std::f32::consts::FRAC_PI_4 / 60.0;
-                            let rotate = glam::Quat::from_rotation_z(self.config.auto_rotate_light_angle);
+                            self.config.auto_rotate_light_angle +=
+                                self.config.auto_rotate_light_speed
+                                    * std::f32::consts::FRAC_PI_4
+                                    * dt;
+                            let rotate =
+                                glam::Quat::from_rotation_z(self.config.auto_rotate_light_angle);
                             self.config.light_dir = rotate * Vec3::new(0.0, 1.0, 2.0);
                         }
                         ui.end_row();

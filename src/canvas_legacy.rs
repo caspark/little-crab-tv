@@ -66,7 +66,14 @@ impl Canvas {
     }
 
     // Bresenham's algorithm 2 - still using floating point maths but avoiding some division
-    pub fn line_faster(&mut self, mut x0: i32, mut y0: i32, mut x1: i32, mut y1: i32, color: RGBA8) {
+    pub fn line_faster(
+        &mut self,
+        mut x0: i32,
+        mut y0: i32,
+        mut x1: i32,
+        mut y1: i32,
+        color: RGBA8,
+    ) {
         let steep = if (x0 - x1).abs() < (y0 - y1).abs() {
             std::mem::swap(&mut x0, &mut y0);
             std::mem::swap(&mut x1, &mut y1);
@@ -303,8 +310,10 @@ impl Canvas {
                     ModelShading::FlatOnly => {
                         self.triangle_barycentric(&screen_coords_2d, RGBA8::new(w, w, w, 255))
                     }
-                    ModelShading::DepthTested => self
-                        .triangle_barycentric_depth_tested(&screen_coords_3d, RGBA8::new(w, w, w, 255)),
+                    ModelShading::DepthTested => self.triangle_barycentric_depth_tested(
+                        &screen_coords_3d,
+                        RGBA8::new(w, w, w, 255),
+                    ),
                     ModelShading::Textured => self.triangle_barycentric_texture(
                         &screen_coords_3d,
                         &model.diffuse_texture,

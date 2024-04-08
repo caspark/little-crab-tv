@@ -56,6 +56,51 @@ impl Default for RenderScene {
     }
 }
 
+impl RenderScene {
+    pub(crate) fn demo_time(self) -> f32 {
+        match self {
+            RenderScene::FivePixels => 0.5,
+            RenderScene::Lines => 0.5,
+            RenderScene::ModelWireframe => 1.0,
+            RenderScene::TriangleLineSweepVerbose => 0.0,
+            RenderScene::TriangleLineSweepCompact => 0.0,
+            RenderScene::TriangleBarycentric => 0.5,
+            RenderScene::ModelColoredTriangles => 1.0,
+            RenderScene::ModelFlatShaded => 1.0,
+            RenderScene::DepthBuffer => 1.0,
+            RenderScene::ModelDepthTested => 1.0,
+            RenderScene::ModelTextured => 1.0,
+            RenderScene::ModelPerspective => 1.0,
+            RenderScene::ModelGouraud => 1.0,
+            RenderScene::MovableCamera => 1.0,
+            RenderScene::ReimplementAsShader => 1.0,
+            RenderScene::GouraudIntensitiesBucketed => 1.0,
+            RenderScene::DepthTestedTriangles => 1.0,
+            RenderScene::NormalGlobalAsDiffuse => 1.0,
+            RenderScene::NormalShader => 1.0,
+            RenderScene::SpecularAsDiffuse => 1.0,
+            RenderScene::NormalTangentAsDiffuse => 1.0,
+            RenderScene::PhongShader => 1.0,
+            RenderScene::ShadowBuffer => 1.0,
+            RenderScene::Shadowed => 1.0,
+            RenderScene::ScreenSpaceAmbientOcclusionCalculated => 1.0,
+            RenderScene::ScreenSpaceAmbientOcclusion => 2.0,
+        }
+    }
+
+    // return the render scene that is after the current one
+    pub(crate) fn next_scene(self) -> Self {
+        let mut iter = RenderScene::iter();
+        // find the current scene
+        for scene in iter.by_ref() {
+            if scene == self {
+                break;
+            }
+        }
+        iter.next().unwrap_or(RenderScene::FivePixels)
+    }
+}
+
 #[allow(clippy::too_many_arguments)]
 pub fn render_scene(
     image: &mut Canvas,

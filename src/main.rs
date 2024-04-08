@@ -17,6 +17,9 @@ use glam::Vec3;
 #[serde(default)] // if we add new fields, give them default values when deserializing old state
 pub struct RenderConfig {
     scene: RenderScene,
+    demo_mode_speed: f32,
+    #[serde(skip)]
+    demo_mode_time_in_scene: f32,
     width: usize,
     height: usize,
     model: PathBuf,
@@ -50,6 +53,7 @@ impl RenderConfig {
     pub(crate) fn always_re_render(&self) -> bool {
         self.auto_rotate_light_speed > 0.0
             || self.auto_rotate_model_speed > 0.0
+            || self.demo_mode_speed > 0.0
     }
 
     pub(crate) fn validate(&self) -> Result<RenderInput> {
@@ -103,6 +107,8 @@ impl Default for RenderConfig {
     fn default() -> Self {
         Self {
             scene: RenderScene::default(),
+            demo_mode_speed: 1.0,
+            demo_mode_time_in_scene: 0.0,
             width: 1000,
             height: 1000,
             model: PathBuf::from("assets/head.obj"),

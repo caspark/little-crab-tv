@@ -4,7 +4,8 @@ use glam::{Mat3, Vec2, Vec3};
 use rgb::{ComponentMap, RGBA8};
 
 use crate::{
-    maths::{self, yolo_max, yolo_min}, Model, CLEAR, DEPTH_MAX
+    maths::{self, yolo_max, yolo_min},
+    Model, CLEAR, DEPTH_MAX,
 };
 
 #[derive(Copy, Clone, Debug, PartialEq, Default)]
