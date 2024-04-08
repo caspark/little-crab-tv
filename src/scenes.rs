@@ -441,7 +441,7 @@ mod tests {
                 &mut image,
                 &scene,
                 &Model::load_obj_file(&Model::validate(
-                    Path::new("assets/african_head.obj").as_ref(),
+                    Path::new("assets/african_head.obj"),
                 )?)
                 .expect("model load should succeed"),
                 Vec3::new(0.0, 0.0, -1.0),

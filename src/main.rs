@@ -16,6 +16,7 @@ use glam::Vec3;
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize, PartialEq)]
 #[serde(default)] // if we add new fields, give them default values when deserializing old state
 pub struct RenderConfig {
+    #[serde(skip)]
     scene: RenderScene,
     demo_mode_speed: f32,
     #[serde(skip)]
@@ -23,8 +24,8 @@ pub struct RenderConfig {
     width: usize,
     height: usize,
     model: PathBuf,
-    auto_rotate_model_speed: f32,
-    auto_rotate_model_angle: f32,
+    auto_rotate_camera_speed: f32,
+    auto_rotate_camera_angle: f32,
     light_dir: Vec3,
     auto_rotate_light_speed: f32,
     auto_rotate_light_angle: f32,
@@ -52,7 +53,7 @@ impl RenderConfig {
 
     pub(crate) fn always_re_render(&self) -> bool {
         self.auto_rotate_light_speed > 0.0
-            || self.auto_rotate_model_speed > 0.0
+            || self.auto_rotate_camera_speed > 0.0
             || self.demo_mode_speed > 0.0
     }
 
@@ -112,8 +113,8 @@ impl Default for RenderConfig {
             width: 1000,
             height: 1000,
             model: PathBuf::from("assets/head.obj"),
-            auto_rotate_model_speed: 0.1,
-            auto_rotate_model_angle: 0.0,
+            auto_rotate_camera_speed: 0.1,
+            auto_rotate_camera_angle: 0.0,
             light_dir: Vec3::new(0.0, 0.0, 1.0),
             auto_rotate_light_speed: 0.1,
             auto_rotate_light_angle: 0.0,

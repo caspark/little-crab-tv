@@ -295,21 +295,6 @@ impl epi::App for RendererApp {
                         );
                         ui.end_row();
 
-                        ui.add(
-                            egui::Slider::new(&mut self.config.auto_rotate_model_speed, 0.0..=3.0)
-                                .text("Auto-rotate model"),
-                        );
-                        if self.config.auto_rotate_model_angle > 0.0 {
-                            self.config.auto_rotate_model_angle +=
-                                self.config.auto_rotate_model_speed
-                                    * std::f32::consts::FRAC_PI_4
-                                    * dt;
-                            let rotate =
-                                glam::Quat::from_rotation_y(self.config.auto_rotate_model_angle);
-                            self.config.camera_look_from = rotate * Vec3::new(0.0, 0.0, 3.0);
-                        }
-                        ui.end_row();
-
                         let light_dir_before = self.config.light_dir;
                         vec3_editor(ui, "Light Dir", &mut self.config.light_dir);
                         if light_dir_before != self.config.light_dir {
@@ -335,6 +320,20 @@ impl epi::App for RendererApp {
                         ui.end_row();
 
                         vec3_editor(ui, "Camera look from", &mut self.config.camera_look_from);
+                        ui.end_row();
+                        ui.add(
+                            egui::Slider::new(&mut self.config.auto_rotate_camera_speed, 0.0..=3.0)
+                                .text("Auto-rotate camera"),
+                        );
+                        if self.config.auto_rotate_camera_speed > 0.0 {
+                            self.config.auto_rotate_camera_angle +=
+                                self.config.auto_rotate_camera_speed
+                                    * std::f32::consts::FRAC_PI_4
+                                    * dt;
+                            let rotate =
+                                glam::Quat::from_rotation_y(self.config.auto_rotate_camera_angle);
+                            self.config.camera_look_from = rotate * Vec3::new(0.0, 0.0, 3.0);
+                        }
                         ui.end_row();
 
                         vec3_editor(ui, "Camera look at", &mut self.config.camera_look_at);
