@@ -1,6 +1,16 @@
 # Crab TV
 
-A rasterizing software renderer, roughly following the approach laid out by https://github.com/ssloy/tinyrenderer
+A rasterizing software .obj model renderer written from-scratch in Rust, including implementing primitives like drawing lines and triangles. 
+
+It supports textures, normal maps, lighting using a phong shading model, shadows, screen space ambient occlusion, and glow maps:
+
+![output](https://github.com/caspark/little-crab-tv/assets/931544/d677a01d-5dce-464f-8279-afadd9497803)
+
+Here's a slower-paced video that also shows off some more of the earlier and intermediate steps, such as wireframe rendering, flat shading and shadow mapping:
+
+https://github.com/caspark/little-crab-tv/assets/931544/e4937660-4051-462e-ad12-e83fc643d64a
+
+It roughly follows the overall approach laid out by the C++-oriented [Tiny Renderer](https://github.com/ssloy/tinyrenderer).
 
 ## Prereqs
 
