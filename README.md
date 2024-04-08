@@ -12,6 +12,8 @@ https://github.com/caspark/little-crab-tv/assets/931544/e4937660-4051-462e-ad12-
 
 It roughly follows the overall approach laid out by the C++-oriented [Tiny Renderer](https://github.com/ssloy/tinyrenderer).
 
+Is raytracing more your jam? Then check out [The All Seeing Crab](https://github.com/caspark/the-all-seeing-crab).
+
 ## Prereqs
 
 * Rust, obviously
